@@ -1300,7 +1300,8 @@ function handleAuthSubmit() {
         if (isSignUp) {
             const nickname = document.getElementById("auth-nickname").value.trim();
             const region = document.getElementById("auth-region").value;
-            
+            const ppId = document.getElementById("auth-pp-id").value.trim();
+
             if (!nickname) {
                 errorMsg.textContent = "회원가입 시 사용할 닉네임을 입력해 주세요.";
                 return;
@@ -1312,6 +1313,7 @@ function handleAuthSubmit() {
                     return db.collection("users").doc(cred.user.uid).set({
                         nickname: nickname,
                         region: region,
+                        promptpayId: ppId,
                         temp: 36.5,
                         avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150"
                     });
@@ -1339,14 +1341,16 @@ function handleAuthSubmit() {
         if (isSignUp) {
             const nickname = document.getElementById("auth-nickname").value.trim() || "신규이웃";
             const region = document.getElementById("auth-region").value;
-            
+            const ppId = document.getElementById("auth-pp-id").value.trim() || "0887654321";
+
             state.currentUser = {
                 uid: "user_" + Date.now(),
                 email: email,
                 name: nickname,
                 avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
                 temp: 36.5,
-                region: region
+                region: region,
+                promptpayId: ppId
             };
         } else {
             state.currentUser = {
