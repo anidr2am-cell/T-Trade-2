@@ -4,11 +4,8 @@
  * [듀얼 모드 설계 - Dual-Mode Hybrid Engine]
  * 1. Firebase 실시간 클라우드 백엔드 (Auth, Firestore, Storage) 지원
  * 2. firebase-config.js 설정 누락/공백 시 오프라인 데모 시뮬레이터 자동 폴백
- * 3. 실제 스캔하여 송금 가능한 태국 표준 PromptPay QR EMVCo Payload 및 CRC16 생성기 내장
+ * 3. 태국 현지 직거래에 맞춘 물품 등록, 검색, 1:1 채팅 흐름 제공
  */
-
-// 실시간 바트 환율 고정 기준 (1 Baht = 37.5 Korean Won)
-const EXCHANGE_RATE = 37.5;
 
 // --- 1. 백엔드 연동 모드 상태 판별 ---
 const isFirebaseLive = typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey !== "";
@@ -68,11 +65,14 @@ const state = {
                 uid: "seller_sukhumvit",
                 name: "수쿰빗살이",
                 avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150",
-                temp: 41.2,
                 badge: "친절왕 • 응답신속",
-                promptpayId: "0887654321"
+                tradeHistory: [
+                    { title: "갤럭시 워치 5", price: 3200, date: "2026.05", role: "판매" },
+                    { title: "샤오미 공기청정기", price: 1800, date: "2026.04", role: "판매" },
+                    { title: "모니터 암", price: 700, date: "2026.03", role: "판매" }
+                ]
             },
-            description: "한국에서 사온 아이폰 15 프로 256기가 내츄럴티타늄 색상 판매합니다.\n배터리 성능 96%이고 상태 최상급입니다.\n방콕 아속역 코리아타운 앞이나 엠쿼티어 근처에서 직거래 선호합니다.\n원화 계좌 이체도 가능합니다!",
+            description: "한국에서 사온 아이폰 15 프로 256기가 내츄럴티타늄 색상 판매합니다.\n배터리 성능 96%이고 상태 최상급입니다.\n방콕 아속역 코리아타운 앞이나 엠쿼티어 근처에서 직거래 선호합니다.",
             tradeLocation: "방콕 아속 코리아타운 광장 앞"
         },
         {
@@ -93,9 +93,11 @@ const state = {
                 uid: "seller_chiangmai",
                 name: "치앙마이노마드",
                 avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150",
-                temp: 36.8,
                 badge: "신뢰감100",
-                promptpayId: "0812345678"
+                tradeHistory: [
+                    { title: "원목 책상", price: 2400, date: "2026.05", role: "판매" },
+                    { title: "캠핑 의자 세트", price: 950, date: "2026.02", role: "구매" }
+                ]
             },
             description: "작년에 치앙마이 이케아에서 구매한 3인승 소파 급하게 처분합니다.\n찢어짐 없이 깨끗하며 직접 수거해가셔야 합니다.",
             tradeLocation: "치앙마이 님만해민 힐사이드 콘도 앞"
@@ -118,9 +120,12 @@ const state = {
                 uid: "seller_ratchada",
                 name: "방콕타이",
                 avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150",
-                temp: 39.5,
                 badge: "시간약속칼",
-                promptpayId: "0898765432"
+                tradeHistory: [
+                    { title: "아이패드 미니", price: 8500, date: "2026.05", role: "판매" },
+                    { title: "무선 키보드", price: 1100, date: "2026.04", role: "구매" },
+                    { title: "자전거 헬멧", price: 600, date: "2026.03", role: "판매" }
+                ]
             },
             description: "에어팟 프로 2세대 라이트닝 버전 판매합니다.\n케이스 스크래치 외에는 완벽히 잘 작동합니다. 박스 있습니다.",
             tradeLocation: "MRT 팔람9역 3번출구 안쪽"
@@ -135,8 +140,10 @@ const state = {
                 uid: "seller_ratchada",
                 name: "방콕타이",
                 avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150",
-                temp: 39.5,
-                promptpayId: "0898765432"
+                tradeHistory: [
+                    { title: "아이패드 미니", price: 8500, date: "2026.05", role: "판매" },
+                    { title: "무선 키보드", price: 1100, date: "2026.04", role: "구매" }
+                ]
             },
             product: {
                 id: 3,
@@ -155,7 +162,7 @@ const state = {
                 { sender: 'them', text: "좋습니다! ฿4,700에 구매할게요! 아속역 근처에서 뵐까요?", time: "오후 3:30" },
                 { sender: 'them', text: "오늘 저녁 아속역 한인타운 앞에서 만나요!", time: "오후 3:45" }
             ],
-            promptPayPaid: false
+            completed: false
         }
     ]
 };
@@ -207,10 +214,15 @@ function loadDemoData() {
         uid: "demo_user_123",
         name: "방콕조아",
         avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150",
-        temp: 37.5,
         region: "방콕 수쿰빗",
-        promptpayId: "0887654321"
+        tradeHistory: [
+            { title: "에어프라이어", price: 1500, date: "2026.05", role: "판매" },
+            { title: "책장", price: 900, date: "2026.04", role: "구매" },
+            { title: "한국어 교재 세트", price: 450, date: "2026.03", role: "판매" }
+        ]
     };
+    state.currentLocation = state.currentUser.region;
+    document.getElementById("current-location").textContent = state.currentLocation;
 
     updateUserUI();
     renderFeed();
@@ -247,9 +259,8 @@ function setupAuthListeners() {
                             email: user.email,
                             name: profile.nickname || "교민",
                             avatar: profile.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
-                            temp: profile.temp || 36.5,
                             region: profile.region || "방콕 수쿰빗",
-                            promptpayId: profile.promptpayId || ""
+                            tradeHistory: profile.tradeHistory || []
                         };
                     } else {
                         // 정보가 없을 때의 기본값 세팅
@@ -258,9 +269,8 @@ function setupAuthListeners() {
                             email: user.email,
                             name: "이름없음",
                             avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
-                            temp: 36.5,
                             region: "방콕 수쿰빗",
-                            promptpayId: ""
+                            tradeHistory: []
                         };
                     }
                     updateUserUI();
@@ -293,14 +303,13 @@ function syncRealChatRooms() {
                       uid: partnerInfo.uid,
                       name: partnerInfo.name,
                       avatar: partnerInfo.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
-                      temp: partnerInfo.temp || 36.5,
-                      promptpayId: partnerInfo.promptpayId || ""
+                      tradeHistory: partnerInfo.tradeHistory || []
                   },
                   product: data.product,
                   lastMessage: data.lastMessage || "대화가 시작되었습니다.",
                   lastTime: data.lastTime || "방금",
                   unreadCount: data.unreadCount ? (data.unreadCount[state.currentUser.uid] || 0) : 0,
-                  promptPayPaid: data.promptPayPaid || false
+                  completed: data.completed || false
               });
           });
           renderChatList();
@@ -324,12 +333,8 @@ function updateUserUI() {
         document.getElementById("user-profile-name").textContent = state.currentUser.name;
         document.getElementById("user-profile-tag").textContent = `${state.currentUser.region} • ${isFirebaseLive ? '서버 로그인됨' : '로컬 데모 사용중'}`;
         document.getElementById("my-avatar").src = state.currentUser.avatar;
-        document.getElementById("user-setting-loc").innerHTML = `${state.currentUser.region} <i class="fa-solid fa-chevron-right"></i>`;
-        
-        // 매너온도 반영
-        document.getElementById("my-temp-text").innerHTML = `${state.currentUser.temp.toFixed(1)}°C <i class="fa-regular fa-face-smile"></i>`;
-        document.getElementById("my-temp-bar").style.width = `${state.currentUser.temp}%`;
-        document.getElementById("my-temp-bar").style.backgroundColor = getTempColor(state.currentUser.temp);
+        document.getElementById("user-setting-loc").innerHTML = `${escapeHtml(state.currentUser.region)} <i class="fa-solid fa-chevron-right"></i>`;
+        document.getElementById("current-location").textContent = state.currentLocation || state.currentUser.region;
         
         // 플로팅 쓰기 버튼 활성
         document.getElementById("write-trigger-btn").style.opacity = "1";
@@ -371,7 +376,6 @@ function renderFeed() {
     }
 
     filteredGoods.forEach(item => {
-        const krwPriceStr = Math.round(item.price * EXCHANGE_RATE).toLocaleString();
         const thbPriceStr = item.price.toLocaleString();
         
         // 좋아요 카운터 (실시간 모드 시 Array length 또는 숫자형 지원)
@@ -386,24 +390,27 @@ function renderFeed() {
         const card = document.createElement("div");
         card.className = "item-card";
         card.setAttribute("data-id", item.id);
+        const imageSrc = safeImageSrc(item.images?.[0]);
+        const safeTitle = escapeHtml(item.title);
+        const safeLocation = escapeHtml(item.location);
+        const safeTime = escapeHtml(item.time);
         
         card.innerHTML = `
             <div class="item-img-container">
-                <img src="${item.images[0]}" class="item-img" alt="${item.title}" loading="lazy">
+                <img src="${imageSrc}" class="item-img" alt="${safeTitle}" loading="lazy">
             </div>
             <div class="item-info">
                 <div>
-                    <h3 class="item-title">${item.title}</h3>
+                    <h3 class="item-title">${safeTitle}</h3>
                     <div class="item-meta">
-                        <span>${item.location}</span>
+                        <span>${safeLocation}</span>
                         <span>•</span>
-                        <span>${item.time}</span>
+                        <span>${safeTime}</span>
                     </div>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: flex-end;">
                     <div class="price-container">
                         <span class="price-thb">฿ ${thbPriceStr}</span>
-                        <span class="price-krw">≈ ${krwPriceStr}원</span>
                     </div>
                     <div class="card-stats">
                         ${item.chats > 0 ? `<span class="stat-item"><i class="fa-regular fa-comment"></i> ${item.chats}</span>` : ''}
@@ -438,7 +445,7 @@ function openProductDetail(productId) {
     item.images.forEach((imgSrc, idx) => {
         const slide = document.createElement("div");
         slide.className = "carousel-slide";
-        slide.innerHTML = `<img src="${imgSrc}" alt="${item.title} 이미지 ${idx+1}">`;
+        slide.innerHTML = `<img src="${safeImageSrc(imgSrc)}" alt="${escapeHtml(item.title)} 이미지 ${idx+1}">`;
         carouselTrack.appendChild(slide);
 
         const indicator = document.createElement("div");
@@ -447,19 +454,10 @@ function openProductDetail(productId) {
         carouselIndicators.appendChild(indicator);
     });
 
-    document.getElementById("detail-seller-avatar").src = item.seller.avatar;
+    document.getElementById("detail-seller-avatar").src = safeImageSrc(item.seller.avatar);
     document.getElementById("detail-seller-name").textContent = item.seller.name;
     document.getElementById("detail-seller-loc").textContent = `${item.location} • ${item.seller.badge || 'T-Trade 이웃'}`;
-    
-    // 매너온도 반영
-    const sTemp = item.seller.temp || 36.5;
-    const mannerVal = document.getElementById("detail-manner-temp");
-    mannerVal.innerHTML = `${sTemp.toFixed(1)}°C <i class="fa-solid fa-face-smile"></i>`;
-    mannerVal.style.color = getTempColor(sTemp);
-    
-    const mannerBar = document.getElementById("detail-manner-temp-bar");
-    mannerBar.style.width = `${sTemp}%`;
-    mannerBar.style.backgroundColor = getTempColor(sTemp);
+    document.getElementById("detail-history-btn").textContent = `거래 내역 보기 (${(item.seller.tradeHistory || []).length})`;
 
     document.getElementById("detail-title").textContent = item.title;
     document.getElementById("detail-meta").textContent = `${item.category} • ${item.time} • 조회 ${item.views || 0}`;
@@ -467,7 +465,6 @@ function openProductDetail(productId) {
     document.getElementById("detail-trade-location").textContent = item.tradeLocation || "판매자와 아속역 조율 가능";
 
     document.getElementById("detail-price-thb").textContent = `฿ ${item.price.toLocaleString()}`;
-    document.getElementById("detail-price-krw").textContent = `≈ ${(Math.round(item.price * EXCHANGE_RATE)).toLocaleString()}원`;
     
     // 좋아요 상태 로딩
     const isLiked = isFirebaseLive && Array.isArray(item.likedBy)
@@ -512,18 +509,18 @@ function renderChatList() {
         card.setAttribute("data-chat-id", chat.id);
         
         card.innerHTML = `
-            <img src="${chat.partner.avatar}" class="chat-card-avatar" alt="${chat.partner.name}">
+            <img src="${safeImageSrc(chat.partner.avatar)}" class="chat-card-avatar" alt="${escapeHtml(chat.partner.name)}">
             <div class="chat-card-info">
                 <div class="chat-card-row1">
-                    <span class="chat-card-name">${chat.partner.name}</span>
-                    <span class="chat-card-time">${chat.lastTime}</span>
+                    <span class="chat-card-name">${escapeHtml(chat.partner.name)}</span>
+                    <span class="chat-card-time">${escapeHtml(chat.lastTime)}</span>
                 </div>
                 <div class="chat-card-row2">
-                    <span class="chat-card-msg">${chat.lastMessage}</span>
+                    <span class="chat-card-msg">${escapeHtml(chat.lastMessage)}</span>
                     ${chat.unreadCount > 0 ? `<span class="chat-card-badge">${chat.unreadCount}</span>` : ''}
                 </div>
             </div>
-            <img src="${chat.product.image}" class="chat-card-prod-img" alt="${chat.product.title}">
+            <img src="${safeImageSrc(chat.product.image)}" class="chat-card-prod-img" alt="${escapeHtml(chat.product.title)}">
         `;
 
         card.addEventListener("click", () => {
@@ -551,7 +548,7 @@ function openChatWindow(chatId) {
 
     // 대화 헤더 및 상품 요약 로드
     document.getElementById("chat-partner-name").textContent = chat.partner.name;
-    document.getElementById("chat-prod-thumb").src = chat.product.image;
+    document.getElementById("chat-prod-thumb").src = safeImageSrc(chat.product.image);
     document.getElementById("chat-prod-title").textContent = chat.product.title;
     document.getElementById("chat-prod-price").textContent = `฿ ${chat.product.price.toLocaleString()}`;
 
@@ -587,22 +584,12 @@ function openChatWindow(chatId) {
                     row.className = `chat-bubble-wrapper ${isMe ? 'sent' : 'received'}`;
                     
                     row.innerHTML = `
-                        ${!isMe ? `<img src="${chat.partner.avatar}" class="bubble-avatar" alt="아바타">` : ''}
-                        <div class="bubble-text">${msg.text}</div>
+                        ${!isMe ? `<img src="${safeImageSrc(chat.partner.avatar)}" class="bubble-avatar" alt="아바타">` : ''}
+                        <div class="bubble-text">${escapeHtml(msg.text || '')}</div>
                         <div class="bubble-time">${formatChatTime(msg.timestamp)}</div>
                     `;
                     msgBox.appendChild(row);
                 });
-
-                // 프롬프트페이 송금 상태 실시간 시스템 노티
-                if (chat.promptPayPaid) {
-                    const payNoti = document.createElement("div");
-                    payNoti.className = "chat-system-message";
-                    payNoti.style.background = "#D1FAE5";
-                    payNoti.style.color = "#065F46";
-                    payNoti.innerHTML = `<i class="fa-solid fa-circle-check"></i> PromptPay ฿ ${chat.product.price.toLocaleString()} 송금 완료!`;
-                    msgBox.appendChild(payNoti);
-                }
 
                 msgBox.scrollTop = msgBox.scrollHeight;
             });
@@ -617,7 +604,7 @@ function renderSystemTip(msgBox) {
     systemTip.className = "chat-system-message";
     systemTip.innerHTML = `
         <i class="fa-solid fa-circle-info"></i> T-Trade 안심 직거래 팁!<br>
-        현금 소지 대신 아래의 <strong>PromptPay QR</strong> 버튼을 눌러 현장에서 실시간 이체하세요.
+        실제 거래 전 상품 상태와 만날 장소를 채팅으로 충분히 확인하세요.
     `;
     msgBox.appendChild(systemTip);
 }
@@ -648,21 +635,12 @@ function renderChatMessages() {
         row.className = `chat-bubble-wrapper ${isMe ? 'sent' : 'received'}`;
         
         row.innerHTML = `
-            ${!isMe ? `<img src="${chat.partner.avatar}" class="bubble-avatar" alt="아바타">` : ''}
-            <div class="bubble-text">${msg.text}</div>
-            <div class="bubble-time">${msg.time}</div>
+            ${!isMe ? `<img src="${safeImageSrc(chat.partner.avatar)}" class="bubble-avatar" alt="아바타">` : ''}
+            <div class="bubble-text">${escapeHtml(msg.text || '')}</div>
+            <div class="bubble-time">${escapeHtml(msg.time || '')}</div>
         `;
         msgBox.appendChild(row);
     });
-
-    if (chat.promptPayPaid) {
-        const payNoti = document.createElement("div");
-        payNoti.className = "chat-system-message";
-        payNoti.style.background = "#D1FAE5";
-        payNoti.style.color = "#065F46";
-        payNoti.innerHTML = `<i class="fa-solid fa-circle-check"></i> PromptPay ฿ ${chat.product.price.toLocaleString()} 송금 완료!`;
-        msgBox.appendChild(payNoti);
-    }
     msgBox.scrollTop = msgBox.scrollHeight;
 }
 
@@ -678,28 +656,8 @@ function bindCommonEvents() {
         });
     });
 
-    // 8-2. 헤더 지역 변경 드롭다운
-    const locSelectBtn = document.getElementById("loc-select-btn");
-    const locDropdown = document.getElementById("loc-dropdown");
-    
-    locSelectBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        locDropdown.classList.toggle("active");
-    });
-
-    const locOptions = document.querySelectorAll(".location-option");
-    locOptions.forEach(opt => {
-        opt.addEventListener("click", (e) => {
-            e.stopPropagation();
-            const locName = opt.getAttribute("data-loc");
-            state.currentLocation = locName;
-            document.getElementById("current-location").textContent = locName === '전체' ? '태국 전체' : locName;
-            locDropdown.classList.remove("active");
-            renderFeed();
-        });
-    });
-
-    document.addEventListener("click", () => locDropdown.classList.remove("active"));
+    // 8-2. 내 동네 직접 입력
+    document.getElementById("loc-select-btn").addEventListener("click", promptForLocation);
 
     // 8-3. 카테고리 퀵 바 필터
     const catChips = document.querySelectorAll(".category-slider .category-chip");
@@ -755,7 +713,6 @@ function bindCommonEvents() {
         document.getElementById("write-price").value = "";
         document.getElementById("write-desc").value = "";
         document.getElementById("write-loc-text").value = "";
-        document.getElementById("price-convert-msg").innerHTML = "";
     });
 
     const closeWrite = () => {
@@ -811,18 +768,6 @@ function bindCommonEvents() {
         }
     });
 
-    // 8-10. 바트-원화 글쓰기 실시간 환율 정보 자동 연산
-    document.getElementById("write-price").addEventListener("input", (e) => {
-        const val = parseFloat(e.target.value);
-        const convertMsg = document.getElementById("price-convert-msg");
-        if (isNaN(val) || val <= 0) {
-            convertMsg.innerHTML = "";
-            return;
-        }
-        const wonPrice = Math.round(val * EXCHANGE_RATE);
-        convertMsg.innerHTML = `<i class="fa-solid fa-arrow-right-arrow-left"></i> 원화 환산 약 <strong>${wonPrice.toLocaleString()}</strong>원 <span style="font-size:0.75rem; color:var(--t-gray-text);">(${EXCHANGE_RATE}원 적용)</span>`;
-    });
-
     // 8-11. 상품 업로드 완료 제출
     document.getElementById("write-submit-btn").addEventListener("click", handleSubmitProduct);
 
@@ -865,64 +810,16 @@ function bindCommonEvents() {
 
     // 로그아웃 버튼
     document.getElementById("logout-btn").addEventListener("click", handleLogout);
-
-    // 8-13. 바트-원화 간편 계산기
-    document.getElementById("calc-tool-btn").addEventListener("click", () => {
-        const userPrompt = prompt("환전 계산할 태국 바트(฿) 금액을 숫자로 입력하세요:", "1000");
-        if (userPrompt === null) return;
-        const baht = parseFloat(userPrompt);
-        if (isNaN(baht)) {
-            alert("유효한 숫자를 입력해 주세요.");
-            return;
-        }
-        const krw = Math.round(baht * EXCHANGE_RATE);
-        alert(`฿ ${baht.toLocaleString()} 바트는 현재 원화 환산 약 ${krw.toLocaleString()}원 입니다.\n(환율 기준: 1 THB = ${EXCHANGE_RATE} KRW)`);
+    document.getElementById("manual-location-btn").addEventListener("click", promptForLocation);
+    document.getElementById("detail-history-btn").addEventListener("click", () => {
+        const item = state.goods.find(g => g.id === state.selectedProductId);
+        if (item) openTradeHistory(item.seller.name, item.seller.tradeHistory || []);
     });
-
-    // 8-14. PromptPay QR 모달 생성 제어 및 100% 실거래 QR 생성
-    const qrModal = document.getElementById("promptpay-modal");
-    document.getElementById("promptpay-open-btn").addEventListener("click", () => {
-        const chat = state.chats.find(c => c.id == state.selectedChatId);
-        if (!chat) return;
-
-        // 수취인 프롬프트페이 번호 확보 (판매자의 ID가 없다면 기본 지정 ID 연동)
-        const receiverPP = chat.partner.promptpayId || (typeof promptPayConfig !== 'undefined' ? promptPayConfig.defaultMerchantId : "0887654321");
-        
-        document.getElementById("pp-receiver-name").textContent = `${chat.partner.name} (수취인)`;
-        document.getElementById("pp-amount-baht").textContent = `฿ ${chat.product.price.toLocaleString()}`;
-        document.getElementById("pp-amount-won").textContent = `≈ ${(Math.round(chat.product.price * EXCHANGE_RATE)).toLocaleString()}원`;
-
-        // 1. 오프라인 Canvas QR 그리기
-        drawPromptPayQR(chat.partner.name, chat.product.price);
-
-        // 2. 실거래 가능 100% 스캔 QR 연동 (공식 API)
-        const qrCanvas = document.getElementById("qr-canvas");
-        const qrRealImg = document.getElementById("qr-real-api-img");
-        const guideMsg = document.getElementById("qr-scan-guide-msg");
-
-        try {
-            // 태국 PromptPay 모바일 표준 Payload 생성
-            const payload = generatePromptPayPayload(receiverPP, chat.product.price);
-            // QR Server 글로벌 보안 API 링크 전달
-            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(payload)}`;
-            
-            qrRealImg.src = qrApiUrl;
-            qrRealImg.style.display = "block";
-            qrCanvas.style.display = "none";
-            
-            guideMsg.innerHTML = `<span style="color:#0D9488; font-weight:700;"><i class="fa-solid fa-qrcode"></i> 태국 모바일 뱅킹 스캔 지원!</span><br>모바일 뱅킹 앱의 QR스캐너로 비추면 금액이 자동 기입됩니다.`;
-        } catch (err) {
-            console.error("실거래용 QR 생성 실패. 로컬 모형 QR로 렌더링합니다.", err);
-            qrRealImg.style.display = "none";
-            qrCanvas.style.display = "block";
-            guideMsg.innerHTML = `모형 송금 완료 버튼을 클릭하면 완료 처리됩니다.`;
-        }
-
-        qrModal.classList.add("active");
+    document.getElementById("my-history-btn").addEventListener("click", () => {
+        openTradeHistory("나의 거래 내역", state.currentUser?.tradeHistory || []);
     });
-
-    document.getElementById("pp-pay-cancel-btn").addEventListener("click", () => qrModal.classList.remove("active"));
-    document.getElementById("pp-pay-complete-btn").addEventListener("click", handleCompletePayment);
+    document.getElementById("history-close-btn").addEventListener("click", closeTradeHistory);
+    document.getElementById("history-sheet-dim").addEventListener("click", closeTradeHistory);
 }
 
 // --- 9. 핵심 비즈니스 로직 이벤트 처리기 (Event Handlers) ---
@@ -1034,7 +931,7 @@ function handleInitiateChat() {
                         uid: item.seller.uid,
                         name: item.seller.name,
                         avatar: item.seller.avatar,
-                        promptpayId: item.seller.promptpayId || ""
+                        tradeHistory: item.seller.tradeHistory || []
                     },
                     product: {
                         id: item.id,
@@ -1047,13 +944,13 @@ function handleInitiateChat() {
                     unreadCount: {
                         [item.seller.uid]: 1
                     },
-                    promptPayPaid: false,
+                    completed: false,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 }).then(() => {
                     // 최초 안내 시스템 메시지
                     chatRef.collection("messages").add({
                         senderId: "system",
-                        text: `👋 이웃과 대화가 시작되었습니다. 아속역 등 직거래 시 따뜻한 매너를 지켜주세요!`,
+                        text: `이웃과 대화가 시작되었습니다. 상품 상태와 거래 장소를 충분히 확인해 주세요.`,
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     
@@ -1078,7 +975,7 @@ function handleInitiateChat() {
                     uid: item.seller.uid,
                     name: item.seller.name,
                     avatar: item.seller.avatar,
-                    promptpayId: item.seller.promptpayId || ""
+                    tradeHistory: item.seller.tradeHistory || []
                 },
                 product: {
                     id: item.id,
@@ -1092,7 +989,7 @@ function handleInitiateChat() {
                 messages: [
                     { sender: 'me', text: `안녕하세요! 올려놓으신 [${item.title}] 거래 희망합니다.`, time: getCurrentTimeStr() }
                 ],
-                promptPayPaid: false
+                completed: false
             };
             state.chats.unshift(newChat);
             existingChat = newChat;
@@ -1127,9 +1024,7 @@ function handleSendMessage() {
         chatRef.update({
             lastMessage: text,
             lastTime: getCurrentTimeStr(),
-            unreadCount: {
-                [chat.partner.uid]: firebase.firestore.FieldValue.increment(1)
-            },
+            [`unreadCount.${chat.partner.uid}`]: firebase.firestore.FieldValue.increment(1),
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
 
@@ -1154,8 +1049,8 @@ function handleSendMessage() {
                 replyText = "상태가 좋은 정품이라 네고는 정말 죄송합니다ㅠㅠ";
             } else if (text.includes("위치") || text.includes("어디")) {
                 replyText = "아속역 코리아타운 1층 광장 입구로 오시면 제가 서 있겠습니다!";
-            } else if (text.includes("송금") || text.includes("계좌") || text.includes("바트")) {
-                replyText = "직거래 시 제가 보여드리는 PromptPay QR코드 찍고 바로 송금해 주시면 됩니다!";
+            } else if (text.includes("계좌") || text.includes("바트")) {
+                replyText = "거래 방식은 만나서 상품 확인 후 편하신 방법으로 정하면 좋겠습니다.";
             }
 
             chat.messages.push({ sender: 'them', text: replyText, time: getCurrentTimeStr() });
@@ -1207,8 +1102,7 @@ function handleSubmitProduct() {
                 uid: state.currentUser.uid,
                 name: state.currentUser.name,
                 avatar: state.currentUser.avatar,
-                temp: state.currentUser.temp,
-                promptpayId: state.currentUser.promptpayId
+                tradeHistory: state.currentUser.tradeHistory || []
             },
             description: desc,
             tradeLocation: locText
@@ -1237,8 +1131,7 @@ function handleSubmitProduct() {
                 uid: state.currentUser.uid,
                 name: state.currentUser.name,
                 avatar: state.currentUser.avatar,
-                temp: state.currentUser.temp,
-                promptpayId: state.currentUser.promptpayId
+                tradeHistory: state.currentUser.tradeHistory || []
             },
             description: desc,
             tradeLocation: locText
@@ -1299,7 +1192,7 @@ function handleAuthSubmit() {
         // 1) 클라우드 실 운영 회원가입 / 로그인
         if (isSignUp) {
             const nickname = document.getElementById("auth-nickname").value.trim();
-            const region = document.getElementById("auth-region").value;
+            const region = document.getElementById("auth-region").value.trim() || "방콕 수쿰빗";
             
             if (!nickname) {
                 errorMsg.textContent = "회원가입 시 사용할 닉네임을 입력해 주세요.";
@@ -1312,7 +1205,7 @@ function handleAuthSubmit() {
                     return db.collection("users").doc(cred.user.uid).set({
                         nickname: nickname,
                         region: region,
-                        temp: 36.5,
+                        tradeHistory: [],
                         avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150"
                     });
                 })
@@ -1338,15 +1231,15 @@ function handleAuthSubmit() {
         // 2) 로컬 가상 데모 로그인/가입
         if (isSignUp) {
             const nickname = document.getElementById("auth-nickname").value.trim() || "신규이웃";
-            const region = document.getElementById("auth-region").value;
+            const region = document.getElementById("auth-region").value.trim() || "방콕 수쿰빗";
             
             state.currentUser = {
                 uid: "user_" + Date.now(),
                 email: email,
                 name: nickname,
                 avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
-                temp: 36.5,
-                region: region
+                region: region,
+                tradeHistory: []
             };
         } else {
             state.currentUser = {
@@ -1354,9 +1247,10 @@ function handleAuthSubmit() {
                 email: email,
                 name: email.split("@")[0],
                 avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150",
-                temp: 37.5,
                 region: "방콕 수쿰빗",
-                promptpayId: "0887654321"
+                tradeHistory: [
+                    { title: "에어프라이어", price: 1500, date: "2026.05", role: "판매" }
+                ]
             };
         }
         updateUserUI();
@@ -1378,43 +1272,7 @@ function handleLogout() {
     }
 }
 
-// 9-8. 모의/실시간 결제 완료
-function handleCompletePayment() {
-    const chat = state.chats.find(c => c.id == state.selectedChatId);
-    if (!chat) return;
-
-    if (isFirebaseLive) {
-        db.collection("chats").doc(state.selectedChatId).update({
-            promptPayPaid: true,
-            lastMessage: "฿ " + chat.product.price.toLocaleString() + " 송금 완료!",
-            lastTime: getCurrentTimeStr(),
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        }).then(() => {
-            // 시스템 메시지 추가 전송
-            db.collection("chats").doc(state.selectedChatId).collection("messages").add({
-                senderId: "system_pay",
-                text: `💰 [PromptPay] ฿ ${chat.product.price.toLocaleString()} 송금이 완료되었습니다.`,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            document.getElementById("promptpay-modal").classList.remove("active");
-            triggerConfetti();
-        });
-    } else {
-        chat.promptPayPaid = true;
-        document.getElementById("promptpay-modal").classList.remove("active");
-        renderChatMessages();
-        triggerConfetti();
-    }
-}
-
 // --- 10. 공통 도구 함수 (Utility Functions) ---
-
-function getTempColor(temp) {
-    if (temp < 36.5) return "var(--temp-36)";
-    if (temp < 40) return "var(--temp-40)";
-    if (temp < 50) return "var(--temp-50)";
-    return "var(--temp-99)";
-}
 
 function updateLikeCountDisplay() {
     if (!state.currentUser) return;
@@ -1434,6 +1292,60 @@ function getCurrentTimeStr() {
     hours = hours % 12;
     hours = hours ? hours : 12;
     return `${ampm} ${hours}:${minutes}`;
+}
+
+function promptForLocation() {
+    const current = state.currentLocation || state.currentUser?.region || "";
+    const nextLocation = prompt("내 동네를 직접 입력해 주세요.", current);
+    if (nextLocation === null) return;
+
+    const normalized = nextLocation.trim();
+    if (!normalized) {
+        alert("동네 이름을 입력해 주세요.");
+        return;
+    }
+
+    state.currentLocation = normalized;
+    if (state.currentUser) state.currentUser.region = normalized;
+    document.getElementById("current-location").textContent = normalized;
+    updateUserUI();
+    renderFeed();
+}
+
+function openTradeHistory(ownerName, history = []) {
+    document.getElementById("history-sheet-title").textContent = `${ownerName} 거래 내역`;
+    const list = document.getElementById("history-list");
+    list.innerHTML = "";
+
+    if (!history.length) {
+        list.innerHTML = `
+            <div class="history-empty">
+                <i class="fa-regular fa-clipboard"></i>
+                <p>아직 완료된 거래 내역이 없습니다.</p>
+            </div>
+        `;
+    } else {
+        history.forEach(item => {
+            const row = document.createElement("div");
+            row.className = "history-row";
+            row.innerHTML = `
+                <div>
+                    <strong>${escapeHtml(item.title)}</strong>
+                    <span>${escapeHtml(item.date)} • ${escapeHtml(item.role)}</span>
+                </div>
+                <em>฿ ${Number(item.price || 0).toLocaleString()}</em>
+            `;
+            list.appendChild(row);
+        });
+    }
+
+    document.getElementById("history-sheet").classList.add("active");
+    document.getElementById("history-sheet-dim").classList.add("active");
+}
+
+function closeTradeHistory() {
+    document.getElementById("history-sheet").classList.remove("active");
+    document.getElementById("history-sheet-dim").classList.remove("active");
 }
 
 let currentSlideIdx = 0;
@@ -1462,188 +1374,8 @@ function goToSlide(idx) {
     indicators[idx].classList.add("active");
 }
 
-// --- 11. 실제 뱅킹 사용 가능 PromptPay QR 생성 표준 연동 엔진 ---
-function generatePromptPayPayload(ppId, amount) {
-    // 1. 여백 및 하이픈 소거
-    let target = ppId.replace(/[^0-9]/g, "");
-    let merchantField = "";
-    
-    if (target.length === 10 && target.startsWith("0")) {
-        // 태국 휴대전화 번호 규격인 경우: '66' 국가코드로 변환하고 13자리 패딩
-        let formattedMobile = "0066" + target.substring(1);
-        merchantField = "0016A000000677010111" + "0113" + formattedMobile;
-    } else {
-        // 태국 법인 ID 또는 여권 번호 규격 (13자리) 인 경우
-        merchantField = "0016A000000677010111" + "0213" + target;
-    }
-    
-    // EMVCo 표준 페이로드 조립
-    let payload = "000201010211"; // 표준 고정 포맷 버전
-    payload += "29" + merchantField.length.toString().padStart(2, '0') + merchantField;
-    payload += "5303764"; // THB 통화 부호 지정 (ISO 4217 규격 코드 764)
-    
-    if (amount && amount > 0) {
-        let amtStr = amount.toFixed(2);
-        payload += "54" + amtStr.length.toString().padStart(2, '0') + amtStr; // 실거래용 금액 태그 54
-    }
-    payload += "5802TH"; // 태국 국가 코드 지정
-    payload += "6304"; // CRC16 체크섬 영역 선언
-    
-    // CRC-16 CCITT 체크섬 연산 후 결합
-    payload += computeCRC16(payload);
-    return payload;
-}
-
-// CRC-16 CCITT 체크섬 알고리즘
-function computeCRC16(str) {
-    let crc = 0xFFFF;
-    for (let c = 0; c < str.length; c++) {
-        let charCode = str.charCodeAt(c);
-        crc ^= (charCode << 8);
-        for (let i = 0; i < 8; i++) {
-            if (crc & 0x8000) {
-                crc = (crc << 1) ^ 0x1021;
-            } else {
-                crc = (crc << 1);
-            }
-        }
-    }
-    let hex = (crc & 0xFFFF).toString(16).toUpperCase();
-    return hex.padStart(4, '0');
-}
-
-// 오프라인용 Canvas 모의 QR 그리기 백업
-function drawPromptPayQR(receiverName, price) {
-    const canvas = document.getElementById("qr-canvas");
-    const ctx = canvas.getContext("2d");
-    const size = canvas.width;
-
-    ctx.clearRect(0, 0, size, size);
-    ctx.strokeStyle = "#002D59";
-    ctx.lineWidth = 14;
-    ctx.strokeRect(7, 7, size - 14, size - 14);
-
-    ctx.strokeStyle = "#2E86C1";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(16, 16, size - 32, size - 32);
-
-    drawFinderPattern(ctx, 24, 24, 32);
-    drawFinderPattern(ctx, size - 56, 24, 32);
-    drawFinderPattern(ctx, 24, size - 56, 32);
-
-    ctx.fillStyle = "#111";
-    const gridStart = 24;
-    const gridEnd = size - 24;
-    const step = 8;
-    
-    let seed = 45;
-    function pseudoRandom() {
-        let x = Math.sin(seed++) * 10000;
-        return x - Math.floor(x);
-    }
-
-    for (let x = gridStart; x < gridEnd; x += step) {
-        for (let y = gridStart; y < gridEnd; y += step) {
-            if ((x < 64 && y < 64) || (x > size - 64 && y < 64) || (x < 64 && y > size - 64)) {
-                continue;
-            }
-            if (pseudoRandom() > 0.45) {
-                ctx.fillRect(x + 1, y + 1, step - 2, step - 2);
-            }
-        }
-    }
-
-    const logoSize = 36;
-    const logoX = (size - logoSize) / 2;
-    const logoY = (size - logoSize) / 2;
-
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(logoX - 2, logoY - 2, logoSize + 4, logoSize + 4);
-    ctx.strokeStyle = "#002D59";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(logoX - 2, logoY - 2, logoSize + 4, logoSize + 4);
-
-    ctx.fillStyle = "#002D59";
-    ctx.beginPath();
-    ctx.arc(size / 2, size / 2, 12, 0, 2 * Math.PI);
-    ctx.fill();
-
-    ctx.fillStyle = "#FFF";
-    ctx.font = "bold 9px Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("TH", size / 2, size / 2);
-}
-
-function drawFinderPattern(ctx, x, y, size) {
-    ctx.fillStyle = "#111";
-    ctx.fillRect(x, y, size, size);
-    ctx.fillStyle = "#FFF";
-    ctx.fillRect(x + 4, y + 4, size - 8, size - 8);
-    ctx.fillStyle = "#111";
-    ctx.fillRect(x + 8, y + 8, size - 16, size - 16);
-}
-
-// --- 12. 물리 엔진 연동 송금 축하 컨페티 효과 ---
-let confettiAnimationId = null;
-function triggerConfetti() {
-    const canvas = document.getElementById("confetti-canvas");
-    const ctx = canvas.getContext("2d");
-    const parent = canvas.parentElement;
-    
-    canvas.width = parent.clientWidth;
-    canvas.height = parent.clientHeight;
-
-    const colors = ["#FF7E36", "#FFC72C", "#10B981", "#3B82F6", "#EC4899", "#8B5CF6"];
-    const particles = [];
-
-    for (let i = 0; i < 80; i++) {
-        particles.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * -20 - 10,
-            size: Math.random() * 6 + 6,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            speedX: Math.random() * 4 - 2,
-            speedY: Math.random() * 5 + 3,
-            rotation: Math.random() * 360,
-            rotationSpeed: Math.random() * 6 - 3
-        });
-    }
-
-    if (confettiAnimationId) {
-        cancelAnimationFrame(confettiAnimationId);
-    }
-
-    function update() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        let finished = true;
-
-        particles.forEach(p => {
-            p.x += p.speedX;
-            p.y += p.speedY;
-            p.rotation += p.rotationSpeed;
-
-            if (p.y < canvas.height) finished = false;
-
-            ctx.save();
-            ctx.translate(p.x, p.y);
-            ctx.rotate((p.rotation * Math.PI) / 180);
-            ctx.fillStyle = p.color;
-            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
-            ctx.restore();
-        });
-
-        if (!finished) {
-            confettiAnimationId = requestAnimationFrame(update);
-        } else {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-    }
-    update();
-}
-
 // ============================================================
-// --- 13. 검색 기능 완전 구현 (Search Engine) ---
+// --- 11. 검색 기능 완전 구현 (Search Engine) ---
 // ============================================================
 
 // 검색 상태
@@ -1774,7 +1506,6 @@ function renderSearchResults() {
     feed.style.display = '';
 
     results.forEach(item => {
-        const krwPriceStr = Math.round(item.price * EXCHANGE_RATE).toLocaleString();
         const thbPriceStr = item.price.toLocaleString();
         const isLiked = isFirebaseLive && Array.isArray(item.likedBy)
             ? item.likedBy.includes(state.currentUser?.uid)
@@ -1789,7 +1520,7 @@ function renderSearchResults() {
 
         card.innerHTML = `
             <div class="item-img-container">
-                <img src="${item.images[0]}" class="item-img" alt="${escapeHtml(item.title)}" loading="lazy">
+                <img src="${safeImageSrc(item.images?.[0])}" class="item-img" alt="${escapeHtml(item.title)}" loading="lazy">
             </div>
             <div class="item-info">
                 <div>
@@ -1797,7 +1528,7 @@ function renderSearchResults() {
                     <div class="item-meta">
                         <span>${highlightKeyword(item.location, searchState.query)}</span>
                         <span>•</span>
-                        <span>${item.time}</span>
+                        <span>${escapeHtml(item.time)}</span>
                         <span>•</span>
                         <span>${highlightKeyword(item.category, searchState.query)}</span>
                     </div>
@@ -1805,7 +1536,6 @@ function renderSearchResults() {
                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                     <div class="price-container">
                         <span class="price-thb">฿ ${thbPriceStr}</span>
-                        <span class="price-krw">≈ ${krwPriceStr}원</span>
                     </div>
                     <div class="card-stats">
                         ${item.chats > 0 ? `<span class="stat-item"><i class="fa-regular fa-comment"></i> ${item.chats}</span>` : ''}
@@ -1898,6 +1628,14 @@ function escapeHtml(str) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
+}
+
+function safeImageSrc(src) {
+    const fallback = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=600";
+    if (!src) return fallback;
+    const value = String(src).trim();
+    if (/^(https?:|data:image\/)/i.test(value)) return value;
+    return fallback;
 }
 
 // ---------- 13-6. 이벤트 바인딩 ----------

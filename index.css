@@ -19,11 +19,6 @@
     --t-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     --t-shadow-premium: 0 10px 30px rgba(255, 126, 54, 0.15);
     --t-font: 'Inter', 'Noto Sans KR', sans-serif;
-    --temp-36: #3B82F6;
-    --temp-40: #10B981;
-    --temp-50: #F59E0B;
-    --temp-99: #EF4444;
-
     /* 레이아웃 상수 */
     --header-h: 60px;
     --nav-h: 64px;
@@ -136,44 +131,10 @@ html, body {
     cursor: pointer;
     gap: 4px;
     position: relative;
-}
-
-.location-dropdown {
-    position: absolute;
-    top: 38px;
-    left: 0;
-    background: var(--t-bg);
-    border-radius: 16px;
-    box-shadow: var(--t-shadow);
-    border: 1px solid var(--t-border);
-    width: 210px;
-    z-index: 120;
-    opacity: 0;
-    transform: translateY(-10px);
-    pointer-events: none;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    padding: 8px;
-}
-
-.location-dropdown.active {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-}
-
-.location-option {
-    padding: 10px 14px;
-    border-radius: 10px;
-    font-size: 0.93rem;
-    font-weight: 500;
-    color: var(--t-dark-text);
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.location-option:hover {
-    background: var(--t-orange-light);
-    color: var(--t-orange);
+    background: none;
+    border: 0;
+    padding: 0;
+    font-family: var(--t-font);
 }
 
 .header-icons {
@@ -338,12 +299,6 @@ html, body {
     font-size: 1.05rem;
     font-weight: 700;
     color: var(--t-dark-text);
-}
-
-.price-krw {
-    font-size: 0.78rem;
-    color: var(--t-orange);
-    font-weight: 500;
 }
 
 .card-stats {
@@ -605,33 +560,15 @@ html, body {
 .seller-name { font-weight: 700; font-size: 0.95rem; color: var(--t-dark-text); }
 .seller-loc { font-size: 0.76rem; color: var(--t-gray-text); margin-top: 2px; }
 
-.manner-temp-box { display: flex; flex-direction: column; align-items: flex-end; }
-
-.manner-temp-value {
-    font-size: 1rem; font-weight: 700;
-    color: var(--temp-40);
-    display: flex; align-items: center; gap: 4px;
-}
-
-.manner-temp-bar-bg {
-    width: 70px; height: 4px;
-    background: var(--t-border);
-    border-radius: 2px;
-    margin-top: 4px; overflow: hidden;
-}
-
-.manner-temp-bar {
-    height: 100%; width: 37.5%;
-    background: var(--temp-40);
-    border-radius: 2px;
-    transition: width 0.8s ease-out;
-}
-
-.manner-label {
-    font-size: 0.7rem;
-    color: var(--t-gray-text);
-    margin-top: 4px;
-    text-decoration: underline;
+.seller-history-btn {
+    border: 1px solid var(--t-border);
+    background: #fff;
+    color: var(--t-dark-text);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
 }
 
 .detail-info-box { padding: 20px; border-bottom: 1px solid var(--t-border); }
@@ -866,19 +803,6 @@ html, body {
 .chat-prod-title { font-size: 0.85rem; font-weight: 600; }
 .chat-prod-price { font-size: 0.8rem; font-weight: 700; color: var(--t-orange); margin-top: 2px; }
 
-.promptpay-shortcut-btn {
-    padding: 6px 12px;
-    background: linear-gradient(135deg, #09477B 0%, #002D59 100%);
-    color: #fff; border: none;
-    border-radius: 20px; font-size: 0.75rem;
-    font-weight: 600; cursor: pointer;
-    box-shadow: 0 4px 10px rgba(9,71,123,0.2);
-    display: flex; align-items: center; gap: 5px;
-    transition: transform 0.2s;
-}
-
-.promptpay-shortcut-btn:hover { transform: scale(1.03); }
-
 .chat-messages-area {
     flex: 1; overflow-y: auto;
     padding: 20px;
@@ -955,76 +879,6 @@ html, body {
 
 .chat-send-btn:hover { background: var(--t-orange-hover); }
 
-/* --- 13. QR 모달 --- */
-.qr-modal-container {
-    position: absolute; /* app-screen 기준 */
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: rgba(0,0,0,0.6);
-    z-index: 500;
-    display: flex; justify-content: center; align-items: center;
-    opacity: 0; pointer-events: none;
-    transition: opacity 0.3s ease;
-}
-
-.qr-modal-container.active { opacity: 1; pointer-events: auto; }
-
-.qr-modal-card {
-    width: min(310px, 90vw);
-    background: #fff;
-    border-radius: 24px; padding: 24px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-    text-align: center;
-    transform: scale(0.9);
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    position: relative;
-}
-
-.qr-modal-container.active .qr-modal-card { transform: scale(1); }
-
-.qr-header-pp {
-    background: linear-gradient(135deg, #0a4d8c 0%, #002b54 100%);
-    color: #fff; border-radius: 12px;
-    padding: 10px 0; font-size: 0.95rem;
-    font-weight: 700; letter-spacing: 0.5px;
-    margin-bottom: 16px;
-    display: flex; justify-content: center; align-items: center; gap: 8px;
-}
-
-.qr-header-pp img { height: 18px; }
-
-.qr-canvas-wrapper {
-    background: #fff; padding: 10px;
-    border: 1px solid var(--t-border);
-    border-radius: 12px; display: inline-block; margin-bottom: 16px;
-}
-
-.qr-merchant-info { font-size: 0.85rem; margin-bottom: 12px; }
-.qr-merchant-name { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
-
-.qr-amount-box {
-    background: var(--t-orange-light);
-    color: var(--t-orange);
-    padding: 12px; border-radius: 12px;
-    font-size: 1.3rem; font-weight: 800; margin-bottom: 16px;
-}
-
-.qr-amount-sub {
-    font-size: 0.78rem; color: var(--t-gray-text);
-    font-weight: 500; margin-top: 4px;
-}
-
-.qr-action-btn {
-    width: 100%; height: 46px;
-    background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%);
-    color: #fff; border: none; border-radius: 10px;
-    font-weight: 700; font-size: 0.92rem; cursor: pointer;
-    margin-bottom: 10px;
-    box-shadow: 0 4px 10px rgba(13,148,136,0.2);
-}
-
-.qr-action-btn:hover { filter: brightness(1.05); }
-
 .qr-cancel-btn {
     width: 100%; height: 38px;
     background: none; border: 1px solid var(--t-border);
@@ -1069,6 +923,80 @@ html, body {
 
 .profile-stat-val { font-size: 1.1rem; font-weight: 700; color: var(--t-dark-text); margin-bottom: 4px; }
 .profile-stat-lbl { font-size: 0.78rem; color: var(--t-gray-text); }
+
+.trade-history-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: #fff;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--t-border);
+}
+
+.summary-title {
+    display: block;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--t-dark-text);
+    margin-bottom: 4px;
+}
+
+.trade-history-summary p {
+    font-size: 0.78rem;
+    color: var(--t-gray-text);
+}
+
+.mini-outline-btn {
+    border: 1px solid var(--t-orange);
+    color: var(--t-orange);
+    background: #fff;
+    border-radius: 8px;
+    height: 34px;
+    padding: 0 14px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.history-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--t-border);
+}
+
+.history-row strong {
+    display: block;
+    font-size: 0.95rem;
+    color: var(--t-dark-text);
+    margin-bottom: 4px;
+}
+
+.history-row span {
+    font-size: 0.78rem;
+    color: var(--t-gray-text);
+}
+
+.history-row em {
+    flex: none;
+    font-style: normal;
+    font-weight: 800;
+    color: var(--t-orange);
+}
+
+.history-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--t-gray-text);
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.history-empty i { font-size: 2.5rem; color: #D1D5DB; }
 
 .my-menu-section {
     background: #fff; margin-top: 10px;
@@ -1131,13 +1059,6 @@ html, body {
     0%   { transform: scale(1); }
     50%  { transform: scale(1.4); }
     100% { transform: scale(1); }
-}
-
-/* 컨페티 캔버스 */
-.confetti-canvas {
-    position: absolute; top: 0; left: 0;
-    width: 100%; height: 100%;
-    pointer-events: none; z-index: 600;
 }
 
 /* --- 18. 데스크톱 사이드바 힌트 배너 (선택적) --- */

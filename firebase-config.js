@@ -16,10 +16,3 @@ const firebaseConfig = {
     messagingSenderId: "",
     appId: ""
 };
-
-// 태국 현지 직거래를 위한 프롬프트페이 설정 (QR 자동 결제용)
-const promptPayConfig = {
-    // 상품 거래 시 QR코드가 즉시 생성되도록 지원하는 판매자의 모바일 번호 또는 프롬프트페이 ID
-    // 입력 예시: "0812345678" 또는 "1101234567890" (여권/태국 ID번호)
-    defaultMerchantId: "0887654321" 
-};

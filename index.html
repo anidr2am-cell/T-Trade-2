@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>T-Trade | 태국 거주 한인 중고거래 1등</title>
-    <meta name="description" content="태국 방콕, 치앙마이, 파타야 한인들을 위한 중고거래 서비스 T-Trade. 바트/원화 자동 환율 계산, 1:1 채팅, PromptPay QR 송금 지원!">
+    <meta name="description" content="태국 방콕, 치앙마이, 파타야 한인들을 위한 중고거래 서비스 T-Trade. 바트 기준 가격, 물품 등록, 검색, 1:1 채팅을 지원합니다.">
 
     <!-- PWA / 홈화면 추가 -->
     <meta name="mobile-web-app-capable" content="yes">
@@ -15,7 +15,7 @@
 
     <!-- Open Graph -->
     <meta property="og:title" content="T-Trade — 태국 한인 중고거래">
-    <meta property="og:description" content="방콕·치앙마이·파타야 교민 직거래 앱. PromptPay QR 즉시 송금 지원.">
+    <meta property="og:description" content="방콕·치앙마이·파타야 교민을 위한 중고 직거래 앱.">
     <meta property="og:type" content="website">
 
     <!-- FontAwesome: CDN 우선, 로컬 PC 테스트 환경 폴백 -->
@@ -65,20 +65,10 @@
             
             <!-- A. 공통 헤더 -->
             <header class="app-header" id="main-header">
-                <div class="location-selector" id="loc-select-btn">
+                <button class="location-selector" id="loc-select-btn" type="button" aria-label="내 동네 직접 입력">
                     <span id="current-location">방콕 수쿰빗</span>
-                    <i class="fa-solid fa-chevron-down" style="font-size: 0.8rem;"></i>
-                    
-                    <!-- 지역 설정 드롭다운 -->
-                    <div class="location-dropdown" id="loc-dropdown">
-                        <div class="location-option" data-loc="전체">태국 전체</div>
-                        <div class="location-option" data-loc="방콕 수쿰빗">방콕 수쿰빗 (Sukhumvit)</div>
-                        <div class="location-option" data-loc="방콕 라차다">방콕 라차다 (Ratchada)</div>
-                        <div class="location-option" data-loc="치앙마이 님만">치앙마이 님만해민</div>
-                        <div class="location-option" data-loc="파타야 센트럴">파타야 센트럴</div>
-                        <div class="location-option" data-loc="푸켓 파통">푸켓 파통 (Patong)</div>
-                    </div>
-                </div>
+                    <i class="fa-solid fa-pen" style="font-size: 0.8rem;"></i>
+                </button>
                 
                 <div class="header-icons">
                     <button class="header-icon-btn" id="search-trigger-btn" aria-label="검색">
@@ -170,30 +160,17 @@
                         </div>
                     </div>
 
-                    <!-- 당근마켓 신뢰도 매너온도 바 -->
-                    <div style="background: #fff; padding: 20px; border-bottom: 1px solid var(--t-border);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <span style="font-weight: 700; font-size: 0.95rem;">나의 매너온도</span>
-                            <span style="color: var(--temp-40); font-weight: 700; font-size: 1.05rem;" id="my-temp-text">
-                                37.5°C <i class="fa-regular fa-face-smile"></i>
-                            </span>
+                    <div class="trade-history-summary">
+                        <div>
+                            <span class="summary-title">나의 거래 내역</span>
+                            <p>완료된 거래를 기준으로 신뢰도를 확인합니다.</p>
                         </div>
-                        <div style="width: 100%; height: 8px; background: var(--t-border); border-radius: 4px; overflow: hidden; margin-bottom: 6px;">
-                            <div style="width: 37.5%; height: 100%; background: var(--temp-40); border-radius: 4px;" id="my-temp-bar"></div>
-                        </div>
-                        <p style="font-size: 0.75rem; color: var(--t-gray-text);">첫 매너온도는 36.5°C 입니다. 따뜻한 거래로 온도를 높여보세요!</p>
+                        <button class="mini-outline-btn" id="my-history-btn" type="button">보기</button>
                     </div>
 
                     <!-- 메뉴 리스트 -->
                     <div class="my-menu-section">
-                        <div class="my-menu-item" id="calc-tool-btn">
-                            <div class="my-menu-left">
-                                <i class="fa-solid fa-calculator"></i>
-                                <span>태국 바트-원화 간편 계산기</span>
-                            </div>
-                            <div class="my-menu-right">실시간 환율 반영 <i class="fa-solid fa-chevron-right"></i></div>
-                        </div>
-                        <div class="my-menu-item">
+                        <div class="my-menu-item" id="manual-location-btn">
                             <div class="my-menu-left">
                                 <i class="fa-solid fa-map-location-dot"></i>
                                 <span>내 동네 설정</span>
@@ -355,15 +332,9 @@
                                 <div class="seller-loc" id="detail-seller-loc">방콕 수쿰빗</div>
                             </div>
                         </div>
-                        <div class="manner-temp-box">
-                            <div class="manner-temp-value" id="detail-manner-temp">
-                                37.5°C <i class="fa-solid fa-face-smile"></i>
-                            </div>
-                            <div class="manner-temp-bar-bg">
-                                <div class="manner-temp-bar" id="detail-manner-temp-bar"></div>
-                            </div>
-                            <span class="manner-label">매너온도</span>
-                        </div>
+                        <button class="seller-history-btn" id="detail-history-btn" type="button">
+                            거래 내역 보기
+                        </button>
                     </div>
                     
                     <!-- 상품 본문 텍스트 -->
@@ -391,7 +362,6 @@
                     </button>
                     <div class="detail-bottom-price">
                         <span class="price-thb" id="detail-price-thb">฿ 0</span>
-                        <span class="price-krw" id="detail-price-krw">≈ 0원</span>
                     </div>
                     <button class="chat-action-btn" id="detail-chat-btn">채팅하기</button>
                 </div>
@@ -419,10 +389,6 @@
                         <div class="chat-prod-title" id="chat-prod-title">거래 매물 제목</div>
                         <div class="chat-prod-price" id="chat-prod-price">฿ 0</div>
                     </div>
-                    <!-- 모의/실시간 PromptPay QR 발행용 버튼 -->
-                    <button class="promptpay-shortcut-btn" id="promptpay-open-btn">
-                        <i class="fa-solid fa-qrcode"></i> PromptPay QR 송금
-                    </button>
                 </div>
                 
                 <!-- 메시지 스크롤 영역 -->
@@ -488,15 +454,12 @@
                         </select>
                     </div>
                     
-                    <!-- 가격 입력 (바트 입력 시 원화로 실시간 자동 계산) -->
+                    <!-- 가격 입력 -->
                     <div class="form-group">
-                        <label for="write-price" class="form-label">거래 가격</label>
+                        <label for="write-price" class="form-label">거래 가격 (바트)</label>
                         <div class="price-input-group">
                             <span class="price-currency-tag">฿</span>
                             <input type="number" id="write-price" class="form-input" placeholder="가격을 입력해주세요.">
-                        </div>
-                        <div class="price-won-convert" id="price-convert-msg">
-                            <!-- 실시간 계산 문구 렌더링 -->
                         </div>
                     </div>
                     
@@ -514,29 +477,15 @@
                 </div>
             </div>
 
-            <!-- H. 모의/실제 표준 PromptPay QR 송금 모달 -->
-            <div class="qr-modal-container" id="promptpay-modal">
-                <div class="qr-modal-card">
-                    <div class="qr-header-pp">
-                        <i class="fa-solid fa-money-bill-transfer"></i> PromptPay QR 결제
-                    </div>
-                    <div class="qr-merchant-info">
-                        <div class="qr-merchant-name" id="pp-receiver-name">판매자 이름</div>
-                        <span style="color: var(--t-gray-text); font-size: 0.75rem;">태국 국가 표준 모바일 지불 코드</span>
-                    </div>
-                    <!-- 다이내믹 캔버스 QR코드 구역 (실시간 모드 시 API 스캔 가능 QR 이미지로 교체) -->
-                    <div class="qr-canvas-wrapper" id="qr-display-area" style="position:relative; width:180px; height:180px; margin: 0 auto 16px auto; display:flex; justify-content:center; align-items:center;">
-                        <canvas id="qr-canvas" width="160" height="160"></canvas>
-                        <img id="qr-real-api-img" style="position:absolute; width:160px; height:160px; display:none; border-radius:6px;" alt="스캔 가능 프롬프트페이 QR">
-                    </div>
-                    <div class="qr-amount-box">
-                        <span id="pp-amount-baht">฿ 0</span>
-                        <div class="qr-amount-sub" id="pp-amount-won">≈ 0원</div>
-                    </div>
-                    <p style="font-size:0.7rem; color:var(--t-gray-text); margin-bottom: 12px; line-height: 1.3;" id="qr-scan-guide-msg">모의 송금 완료 버튼을 클릭하면 완료 처리됩니다.</p>
-                    <button class="qr-action-btn" id="pp-pay-complete-btn">송금 완료하기 (데모)</button>
-                    <button class="qr-cancel-btn" id="pp-pay-cancel-btn">취소</button>
+            <div class="sheet-overlay" id="history-sheet-dim" style="z-index: 420;"></div>
+            <div class="bottom-sheet" id="history-sheet" style="z-index: 430; height: 58%;">
+                <div class="sheet-drag-handle"></div>
+                <div class="sheet-header">
+                    <button class="close-btn" id="history-close-btn" style="font-size: 1rem; font-weight: 500;">닫기</button>
+                    <span style="font-weight: 700; font-size: 1.05rem;" id="history-sheet-title">거래 내역</span>
+                    <div style="width: 28px;"></div>
                 </div>
+                <div class="sheet-body no-scrollbar" id="history-list"></div>
             </div>
             
             <!-- I. [NEW] 회원가입 및 로그인 입력 팝업 모달 -->
@@ -584,16 +533,13 @@
                 </div>
             </div>
 
-            <!-- 송금 완료 축하 파티 컨페티 캔버스 -->
-            <canvas class="confetti-canvas" id="confetti-canvas"></canvas>
-
         </div><!-- /app-screen -->
 
         <!-- 데스크톱 우측 힌트 배너 -->
         <aside class="desktop-side-hint">
-            <i class="fa-brands fa-stripe" style="color: #002b54; opacity: 0.3;"></i>
-            <strong>PromptPay QR 지원</strong>
-            <span>태국 전 은행 앱으로<br>즉시 송금 가능</span>
+            <i class="fa-solid fa-comments" style="color: #002b54; opacity: 0.3;"></i>
+            <strong>1:1 채팅 거래</strong>
+            <span>판매자와 구매자가<br>직접 약속을 잡습니다</span>
         </aside>
 
     </div><!-- /device-container -->
