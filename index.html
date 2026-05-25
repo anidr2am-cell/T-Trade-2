@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>T-Trade | 태국 거주 한인 중고거래 1등</title>
+    <meta name="description" content="태국 방콕, 치앙마이, 파타야 한인들을 위한 중고거래 서비스 T-Trade. 바트 기준 가격, 물품 등록, 검색, 1:1 채팅을 지원합니다.">
+
+    <!-- PWA / 홈화면 추가 -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="T-Trade">
+    <meta name="theme-color" content="#FF7E36">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="T-Trade — 태국 한인 중고거래">
+    <meta property="og:description" content="방콕·치앙마이·파타야 교민을 위한 중고 직거래 앱.">
+    <meta property="og:type" content="website">
+
+    <!-- FontAwesome: CDN 우선, 로컬 PC 테스트 환경 폴백 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script>
+        // CDN 로드 실패 시 로컬 파일로 자동 전환
+        document.addEventListener('DOMContentLoaded', function() {
+            var testIcon = document.createElement('i');
+            testIcon.className = 'fa-solid fa-check';
+            testIcon.style.cssText = 'position:absolute;visibility:hidden;';
+            document.body.appendChild(testIcon);
+            var style = window.getComputedStyle(testIcon, ':before');
+            var loaded = style.fontFamily.includes('Font Awesome') || style.content !== 'none';
+            document.body.removeChild(testIcon);
+            if (!loaded) {
+                var link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = 'assets/fa/css/all.min.css';
+                document.head.appendChild(link);
+            }
+        });
+    </script>
+    <!-- 스타일시트 -->
+    <link rel="stylesheet" href="index.css">
+
+    <!-- Firebase 설정 (키 입력 시 실운영 전환) -->
+    <script src="firebase-config.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+</head>
+<body>
+
+    <!-- 앱 루트 (반응형 전체화면, 폰 프레임 제거) -->
+    <div class="device-container" id="device">
+
+        <!-- 데스크톱 좌측 힌트 배너 -->
+        <aside class="desktop-side-hint">
+            <i class="fa-solid fa-tag"></i>
+            <strong>T-Trade</strong>
+            <span>태국 한인 직거래 플랫폼</span>
+        </aside>
+
+        <!-- 실제 앱 화면 영역 -->
+        <div class="app-screen">
+            
+            <!-- A. 공통 헤더 -->
+            <header class="app-header" id="main-header">
+                <button class="location-selector" id="loc-select-btn" type="button" aria-label="내 동네 직접 입력">
+                    <span id="current-location">방콕 수쿰빗</span>
+                    <i class="fa-solid fa-pen" style="font-size: 0.8rem;"></i>
+                </button>
+                
+                <div class="header-icons">
+                    <button class="header-icon-btn" id="search-trigger-btn" aria-label="검색">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </button>
+                    <button class="header-icon-btn" id="noti-btn" aria-label="알림">
+                        <i class="fa-regular fa-bell"></i>
+                        <span class="badge" id="noti-badge">2</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- B. 스크롤 뷰포트 (콘텐츠 메인 영역) -->
+            <main class="content-area no-scrollbar" id="main-scroll-view">
+                
+                <!-- B-1. 홈 탭 (기본화면) -->
+                <div class="tab-content" id="tab-home">
+                    <!-- 카테고리 가로 스크롤 슬라이더 -->
+                    <div class="category-slider no-scrollbar">
+                        <span class="category-chip active" data-cat="전체">전체</span>
+                        <span class="category-chip" data-cat="디지털기기">디지털기기</span>
+                        <span class="category-chip" data-cat="생활가전">생활가전</span>
+                        <span class="category-chip" data-cat="가구/인테리어">가구/인테리어</span>
+                        <span class="category-chip" data-cat="의류/잡화">의류/잡화</span>
+                        <span class="category-chip" data-cat="뷰티/미용">뷰티/미용</span>
+                        <span class="category-chip" data-cat="스포츠/레저">스포츠/레저</span>
+                        <span class="category-chip" data-cat="식품">식품</span>
+                        <span class="category-chip" data-cat="기타">기타</span>
+                    </div>
+                    
+                    <!-- 중고거래 매물 목록 피드 -->
+                    <div class="feed-container" id="goods-feed">
+                        <!-- JS에서 동적 매물 카드 렌더링 -->
+                    </div>
+                </div>
+
+                <!-- B-2. 채팅 목록 탭 -->
+                <div class="tab-content" id="tab-chats" style="display: none;">
+                    <!-- 로그인 상태 알림 배너 (Firebase 연동용) -->
+                    <div class="chat-signin-required-banner" id="chat-auth-banner" style="display:none;">
+                        <i class="fa-solid fa-lock" style="font-size: 2rem; color: var(--t-orange); margin-bottom: 12px;"></i>
+                        <p style="font-weight: 700; font-size: 0.95rem;">실시간 채팅을 이용하시려면 로그인이 필요합니다.</p>
+                        <button class="chat-action-btn" style="flex:none; width: 140px; margin-top: 12px; height: 36px; font-size: 0.85rem;" id="chat-login-trigger">로그인 하러가기</button>
+                    </div>
+                    <div class="chat-list-container no-scrollbar" id="chat-list-view">
+                        <!-- JS에서 동적 채팅방 목록 렌더링 -->
+                    </div>
+                </div>
+
+                <!-- B-3. 나의 정보 (My Page) 탭 -->
+                <div class="tab-content" id="tab-mypage" style="display: none;">
+                    
+                    <!-- 1) 로그인 완료 프로필 정보 카드 -->
+                    <div class="profile-card" id="my-profile-card">
+                        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150" class="profile-avatar" id="my-avatar" alt="사용자 프로필">
+                        <div style="flex: 1;">
+                            <div class="profile-name" id="user-profile-name">방콕조아</div>
+                            <span class="profile-tag" id="user-profile-tag">로컬 데모 모드 작동중</span>
+                        </div>
+                        <button class="qr-cancel-btn" id="logout-btn" style="width: auto; height: 30px; font-size: 0.75rem; padding: 0 10px; border-radius: 6px;">로그아웃</button>
+                    </div>
+
+                    <!-- 2) 비로그인 상태 가상 유도 로그인 유치 블록 -->
+                    <div class="profile-card" id="my-auth-prompt-card" style="display: none; flex-direction: column; text-align: center; gap: 12px; padding: 30px 20px;">
+                        <i class="fa-regular fa-face-smile-wink" style="font-size: 3rem; color: var(--t-orange);"></i>
+                        <div>
+                            <h3 style="font-weight: 700; font-size: 1.1rem; color: var(--t-dark-text);">T-Trade에 로그인하세요!</h3>
+                            <p style="font-size: 0.8rem; color: var(--t-gray-text); margin-top: 4px;">로그인을 하시면 실시간으로 이웃과 채팅하고 실제 매물을 등록할 수 있습니다.</p>
+                        </div>
+                        <div style="display: flex; width: 100%; gap: 10px; margin-top: 6px;">
+                            <button class="chat-action-btn" id="auth-login-sheet-btn">로그인</button>
+                            <button class="qr-cancel-btn" id="auth-signup-sheet-btn" style="flex: 1; border-color: var(--t-orange); color: var(--t-orange);">회원가입</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 거래 성과 격자 -->
+                    <div class="profile-stats-grid">
+                        <div class="profile-stat-box" id="my-sales-btn">
+                            <div class="profile-stat-val" id="my-sales-count">3</div>
+                            <div class="profile-stat-lbl">판매중</div>
+                        </div>
+                        <div class="profile-stat-box" id="my-bought-btn">
+                            <div class="profile-stat-val">5</div>
+                            <div class="profile-stat-lbl">거래완료</div>
+                        </div>
+                        <div class="profile-stat-box" id="my-liked-btn">
+                            <div class="profile-stat-val" id="my-like-count">12</div>
+                            <div class="profile-stat-lbl">관심목록</div>
+                        </div>
+                    </div>
+
+                    <div class="trade-history-summary">
+                        <div>
+                            <span class="summary-title">나의 거래 내역</span>
+                            <p>완료된 거래를 기준으로 신뢰도를 확인합니다.</p>
+                        </div>
+                        <button class="mini-outline-btn" id="my-history-btn" type="button">보기</button>
+                    </div>
+
+                    <!-- 메뉴 리스트 -->
+                    <div class="my-menu-section">
+                        <div class="my-menu-item" id="manual-location-btn">
+                            <div class="my-menu-left">
+                                <i class="fa-solid fa-map-location-dot"></i>
+                                <span>내 동네 설정</span>
+                            </div>
+                            <div class="my-menu-right" id="user-setting-loc">수쿰빗 아속역 <i class="fa-solid fa-chevron-right"></i></div>
+                        </div>
+                        <div class="my-menu-item">
+                            <div class="my-menu-left">
+                                <i class="fa-solid fa-shield-heart"></i>
+                                <span>키워드 알림 설정</span>
+                            </div>
+                            <div class="my-menu-right">활성화 4개 <i class="fa-solid fa-chevron-right"></i></div>
+                        </div>
+                        <div class="my-menu-item" id="firebase-status-btn">
+                            <div class="my-menu-left">
+                                <i class="fa-solid fa-server"></i>
+                                <span>백엔드 서버 상태</span>
+                            </div>
+                            <div class="my-menu-right" id="db-status-badge" style="color:var(--t-gray-text);">연결중...</div>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+
+            <!-- C. 플로팅 글쓰기 버튼 (+) -->
+            <button class="floating-btn" id="write-trigger-btn" aria-label="상품 등록">
+                <i class="fa-solid fa-plus"></i>
+            </button>
+
+            <!-- D. 하단 네비게이션 탭 바 -->
+            <nav class="bottom-nav">
+                <div class="nav-item active" data-tab="home">
+                    <i class="fa-solid fa-house"></i>
+                    <span>홈</span>
+                </div>
+                <div class="nav-item" data-tab="chats" id="nav-chats-tab">
+                    <i class="fa-regular fa-comments"></i>
+                    <span>채팅</span>
+                    <span class="badge" id="chat-tab-badge">1</span>
+                </div>
+                <div class="nav-item" data-tab="mypage">
+                    <i class="fa-regular fa-user"></i>
+                    <span>나의 T-Trade</span>
+                </div>
+            </nav>
+
+            <!-- ===================== [오버레이 화면 구성] ===================== -->
+
+            <!-- E-0. 검색 오버레이 (전체화면 슬라이드 다운) -->
+            <div class="slide-overlay search-overlay" id="search-overlay">
+                <!-- 검색 헤더 -->
+                <div class="search-overlay-header">
+                    <div class="search-input-wrap">
+                        <i class="fa-solid fa-magnifying-glass search-icon-inner"></i>
+                        <input
+                            type="text"
+                            id="search-input"
+                            class="search-main-input"
+                            placeholder="상품명, 지역, 카테고리 검색..."
+                            autocomplete="off"
+                            spellcheck="false"
+                        >
+                        <button class="search-clear-btn" id="search-clear-btn" aria-label="지우기" style="display:none;">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    <button class="search-cancel-btn" id="search-cancel-btn">취소</button>
+                </div>
+
+                <!-- 검색 전: 최근 검색어 + 인기 키워드 -->
+                <div class="search-idle-view" id="search-idle-view">
+                    <!-- 최근 검색어 -->
+                    <div class="search-section" id="recent-searches-section">
+                        <div class="search-section-header">
+                            <span class="search-section-title">최근 검색어</span>
+                            <button class="search-section-clear" id="recent-clear-btn">전체 삭제</button>
+                        </div>
+                        <div class="recent-tags" id="recent-tags-container">
+                            <!-- JS 동적 렌더링 -->
+                        </div>
+                        <div class="search-empty-recent" id="search-empty-recent" style="display:none;">
+                            <span>최근 검색어가 없습니다.</span>
+                        </div>
+                    </div>
+
+                    <!-- 인기 검색어 -->
+                    <div class="search-section">
+                        <div class="search-section-header">
+                            <span class="search-section-title">🔥 인기 검색어</span>
+                        </div>
+                        <div class="popular-keyword-grid" id="popular-keywords">
+                            <span class="popular-kw-chip" data-kw="아이폰">아이폰</span>
+                            <span class="popular-kw-chip" data-kw="에어팟">에어팟</span>
+                            <span class="popular-kw-chip" data-kw="소파">소파</span>
+                            <span class="popular-kw-chip" data-kw="자전거">자전거</span>
+                            <span class="popular-kw-chip" data-kw="방콕">방콕</span>
+                            <span class="popular-kw-chip" data-kw="치앙마이">치앙마이</span>
+                            <span class="popular-kw-chip" data-kw="명품">명품</span>
+                            <span class="popular-kw-chip" data-kw="골프">골프</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 검색 중/후: 결과 리스트 -->
+                <div class="search-result-view" id="search-result-view" style="display:none;">
+                    <!-- 결과 헤더 -->
+                    <div class="search-result-meta" id="search-result-meta">
+                        <!-- ex) '아이폰' 검색결과 3건 -->
+                    </div>
+                    <!-- 정렬 옵션 -->
+                    <div class="search-sort-bar" id="search-sort-bar">
+                        <button class="sort-btn active" data-sort="relevant">관련순</button>
+                        <button class="sort-btn" data-sort="recent">최신순</button>
+                        <button class="sort-btn" data-sort="price_asc">낮은 가격순</button>
+                        <button class="sort-btn" data-sort="price_desc">높은 가격순</button>
+                    </div>
+                    <!-- 결과 피드 -->
+                    <div class="feed-container no-scrollbar" id="search-feed" style="padding-bottom: 120px;">
+                        <!-- JS 동적 렌더링 -->
+                    </div>
+                    <!-- 결과 없음 -->
+                    <div class="search-no-result" id="search-no-result" style="display:none;">
+                        <i class="fa-solid fa-magnifying-glass-minus"></i>
+                        <strong id="search-no-result-kw"></strong>
+                        <p>검색 결과가 없습니다.</p>
+                        <span>다른 키워드로 검색해보세요.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- E. 매물 상세 페이지 (우측 슬라이드 인) -->
+            <div class="slide-overlay" id="product-detail-view">
+                <div class="detail-header">
+                    <button class="back-btn" id="detail-back-btn" aria-label="뒤로가기">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <button class="header-icon-btn" id="detail-share-btn" aria-label="공유">
+                        <i class="fa-solid fa-share-nodes"></i>
+                    </button>
+                </div>
+                <div class="detail-content no-scrollbar" id="detail-content-area">
+                    <!-- 다중 사진 캐러셀 -->
+                    <div class="carousel-container">
+                        <div class="carousel-track" id="detail-carousel-track">
+                            <!-- JS 동적 렌더링 -->
+                        </div>
+                        <div class="carousel-indicators" id="detail-carousel-indicators">
+                            <!-- JS 동적 렌더링 -->
+                        </div>
+                    </div>
+                    
+                    <!-- 판매자 신뢰 등급 프로필 -->
+                    <div class="seller-profile-container">
+                        <div class="seller-profile">
+                            <img src="" class="seller-avatar" id="detail-seller-avatar" alt="판매자 아바타">
+                            <div>
+                                <div class="seller-name" id="detail-seller-name">판매자 닉네임</div>
+                                <div class="seller-loc" id="detail-seller-loc">방콕 수쿰빗</div>
+                            </div>
+                        </div>
+                        <button class="seller-history-btn" id="detail-history-btn" type="button">
+                            거래 내역 보기
+                        </button>
+                    </div>
+                    
+                    <!-- 상품 본문 텍스트 -->
+                    <div class="detail-info-box">
+                        <h1 class="detail-title" id="detail-title">아이폰 15 프로 팝니다</h1>
+                        <div class="detail-category-time" id="detail-meta">디지털기기 • 3시간 전</div>
+                        <p class="detail-description" id="detail-description">상태 좋습니다...</p>
+                    </div>
+                    
+                    <!-- 태국 한인 맞춤형 직거래 지도 표기 -->
+                    <div class="trade-map-box">
+                        <div class="trade-map-title"><i class="fa-solid fa-map-pin" style="color: var(--t-orange);"></i> 거래 희망 위치</div>
+                        <div class="map-placeholder">
+                            <i class="fa-solid fa-location-dot map-pin"></i>
+                            <div class="map-location-tag" id="detail-trade-location">수쿰빗 코리아타운 앞</div>
+                            <div style="position: absolute; width: 100%; height: 100%; opacity: 0.15; background-image: radial-gradient(#09477b 1.5px, transparent 1.5px); background-size: 16px 16px;"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 상세페이지 고정 하단바 -->
+                <div class="detail-bottom-bar">
+                    <button class="like-action-btn" id="detail-like-btn" aria-label="좋아요">
+                        <i class="fa-regular fa-heart"></i>
+                    </button>
+                    <div class="detail-bottom-price">
+                        <span class="price-thb" id="detail-price-thb">฿ 0</span>
+                    </div>
+                    <button class="chat-action-btn" id="detail-chat-btn">채팅하기</button>
+                </div>
+            </div>
+
+            <!-- F. 1:1 대화방 상세 창 (우측 슬라이드 인) -->
+            <div class="slide-overlay chat-window" id="chat-detail-view">
+                <!-- 채팅 헤더 -->
+                <div class="detail-header" style="height: 56px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button class="back-btn" id="chat-back-btn" aria-label="뒤로가기" style="padding: 4px;">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <span class="seller-name" id="chat-partner-name" style="font-size: 1.05rem;">태국인 쏨차이</span>
+                    </div>
+                    <button class="header-icon-btn" id="chat-menu-btn" aria-label="채팅 메뉴">
+                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                    </button>
+                </div>
+                
+                <!-- 거래 매물 요약 헤더 바 -->
+                <div class="chat-prod-header">
+                    <img src="" class="chat-card-prod-img" id="chat-prod-thumb" alt="매물 이미지">
+                    <div class="chat-prod-info">
+                        <div class="chat-prod-title" id="chat-prod-title">거래 매물 제목</div>
+                        <div class="chat-prod-price" id="chat-prod-price">฿ 0</div>
+                    </div>
+                </div>
+                
+                <!-- 메시지 스크롤 영역 -->
+                <div class="chat-messages-area no-scrollbar" id="chat-messages-box">
+                    <!-- JS에서 동적 대화방 메시지 말풍선 연출 -->
+                </div>
+                
+                <!-- 채팅 입력창 -->
+                <div class="chat-input-area">
+                    <button class="header-icon-btn" style="color: var(--t-gray-text);" aria-label="사진 첨부">
+                        <i class="fa-regular fa-image"></i>
+                    </button>
+                    <input type="text" class="chat-input" id="chat-text-input" placeholder="메시지를 입력하세요...">
+                    <button class="chat-send-btn" id="chat-send-btn" aria-label="전송">
+                        <i class="fa-solid fa-paper-plane" style="font-size: 0.9rem;"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- G. 글쓰기 폼 바텀시트 (하단 슬라이드 업) -->
+            <div class="sheet-overlay" id="write-sheet-dim"></div>
+            <div class="bottom-sheet" id="write-sheet">
+                <div class="sheet-drag-handle"></div>
+                <div class="sheet-header">
+                    <button class="close-btn" id="write-close-btn" style="font-size: 1rem; font-weight: 500;">닫기</button>
+                    <span style="font-weight: 700; font-size: 1.05rem;">중고거래 글쓰기</span>
+                    <button class="chat-action-btn" id="write-submit-btn" style="flex: none; height: 34px; padding: 0 16px; border-radius: 8px; font-size: 0.85rem;">완료</button>
+                </div>
+                <div class="sheet-body no-scrollbar">
+                    
+                    <!-- 이미지 업로드 뷰 -->
+                    <div class="form-group">
+                        <label class="form-label">상품 사진 (최대 5장)</label>
+                        <div class="image-upload-row no-scrollbar">
+                            <label class="image-upload-btn" id="img-upload-trigger">
+                                <i class="fa-solid fa-camera"></i>
+                                <span><strong id="uploaded-count">0</strong>/5</span>
+                                <input type="file" id="real-file-input" accept="image/*" multiple style="display:none;">
+                            </label>
+                            <!-- 동적 이미지 썸네일 노출 칩 컨테이너 -->
+                            <div id="uploaded-img-preview-container" style="display: flex; gap: 10px;"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 제목 -->
+                    <div class="form-group">
+                        <label for="write-title" class="form-label">글 제목</label>
+                        <input type="text" id="write-title" class="form-input" placeholder="글 제목을 입력해주세요.">
+                    </div>
+                    
+                    <!-- 카테고리 -->
+                    <div class="form-group">
+                        <label for="write-cat" class="form-label">카테고리</label>
+                        <select id="write-cat" class="form-input" style="background: #fff; cursor: pointer;">
+                            <option value="디지털기기">디지털기기</option>
+                            <option value="생활가전">생활가전</option>
+                            <option value="가구/인테리어">가구/인테리어</option>
+                            <option value="의류/잡화">의류/잡화</option>
+                            <option value="뷰티/미용">뷰티/미용</option>
+                            <option value="스포츠/레저">스포츠/레저</option>
+                            <option value="식품">식품</option>
+                            <option value="기타">기타</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 가격 입력 -->
+                    <div class="form-group">
+                        <label for="write-price" class="form-label">거래 가격 (바트)</label>
+                        <div class="price-input-group">
+                            <span class="price-currency-tag">฿</span>
+                            <input type="number" id="write-price" class="form-input" placeholder="가격을 입력해주세요.">
+                        </div>
+                    </div>
+                    
+                    <!-- 설명 -->
+                    <div class="form-group">
+                        <label for="write-desc" class="form-label">상품 세부 설명</label>
+                        <textarea id="write-desc" class="form-textarea" placeholder="방콕/치앙마이 직거래 선호 여부, 상품의 사용 기간이나 상태 및 거래 희망 장소를 자세히 적어주세요."></textarea>
+                    </div>
+                    
+                    <!-- 직거래 선호 장소 입력 -->
+                    <div class="form-group">
+                        <label for="write-loc-text" class="form-label">거래 희망 장소</label>
+                        <input type="text" id="write-loc-text" class="form-input" placeholder="예) 수쿰빗 아속 한인상가 앞, 프롬퐁역 3번출구">
+                    </div>
+                </div>
+            </div>
+
+            <div class="sheet-overlay" id="history-sheet-dim" style="z-index: 420;"></div>
+            <div class="bottom-sheet" id="history-sheet" style="z-index: 430; height: 58%;">
+                <div class="sheet-drag-handle"></div>
+                <div class="sheet-header">
+                    <button class="close-btn" id="history-close-btn" style="font-size: 1rem; font-weight: 500;">닫기</button>
+                    <span style="font-weight: 700; font-size: 1.05rem;" id="history-sheet-title">거래 내역</span>
+                    <div style="width: 28px;"></div>
+                </div>
+                <div class="sheet-body no-scrollbar" id="history-list"></div>
+            </div>
+            
+            <!-- I. [NEW] 회원가입 및 로그인 입력 팝업 모달 -->
+            <div class="sheet-overlay" id="auth-sheet-dim" style="z-index: 400;"></div>
+            <div class="bottom-sheet" id="auth-sheet" style="z-index: 410; height: 75%;">
+                <div class="sheet-drag-handle"></div>
+                <div class="sheet-header">
+                    <button class="close-btn" id="auth-close-btn" style="font-size: 1rem; font-weight: 500;">닫기</button>
+                    <span style="font-weight: 700; font-size: 1.05rem;" id="auth-sheet-title">T-Trade 로그인</span>
+                    <div style="width: 28px;"></div>
+                </div>
+                <div class="sheet-body no-scrollbar" style="padding-top:10px;">
+                    
+                    <div id="auth-error-msg" style="color: #EF4444; font-size: 0.8rem; font-weight: 600; text-align: center; margin-bottom: 12px; min-height: 18px;"></div>
+                    
+                    <!-- 1) 공통 입력 필드 -->
+                    <div class="form-group">
+                        <label for="auth-email" class="form-label">이메일 주소</label>
+                        <input type="email" id="auth-email" class="form-input" placeholder="example@ttrade.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="auth-password" class="form-label">비밀번호</label>
+                        <input type="password" id="auth-password" class="form-input" placeholder="6자리 이상 입력해주세요.">
+                    </div>
+
+                    <!-- 2) 회원가입 전용 추가 입력 필드 -->
+                    <div id="auth-signup-fields" style="display: none;">
+                        <div class="form-group">
+                            <label for="auth-nickname" class="form-label">닉네임</label>
+                            <input type="text" id="auth-nickname" class="form-input" placeholder="멋진 별명을 입력해주세요.">
+                        </div>
+                        <div class="form-group">
+                            <label for="auth-region" class="form-label">거주지 직접 입력</label>
+                            <input type="text" id="auth-region" class="form-input" placeholder="예) 방콕 수쿰빗 소이 12, 치앙마이 님만해민">
+                        </div>
+                    </div>
+
+                    <button class="chat-action-btn" id="auth-submit-btn" style="width: 100%; height: 48px; margin-top: 15px; font-size: 1rem;">로그인 하기</button>
+                    
+                    <p style="text-align: center; font-size: 0.85rem; color: var(--t-gray-text); margin-top: 20px;" id="auth-toggle-msg">
+                        T-Trade가 처음이신가요? 
+                        <a href="#" id="auth-toggle-link" style="color: var(--t-orange); font-weight: 700; text-decoration: none;">회원가입 하기</a>
+                    </p>
+
+                </div>
+            </div>
+
+        </div><!-- /app-screen -->
+
+        <!-- 데스크톱 우측 힌트 배너 -->
+        <aside class="desktop-side-hint">
+            <i class="fa-solid fa-comments" style="color: #002b54; opacity: 0.3;"></i>
+            <strong>1:1 채팅 거래</strong>
+            <span>판매자와 구매자가<br>직접 약속을 잡습니다</span>
+        </aside>
+
+    </div><!-- /device-container -->
+
+    <!-- 핵심 비즈니스 로직 JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>
