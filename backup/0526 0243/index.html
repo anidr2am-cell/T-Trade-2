@@ -18,8 +18,26 @@
     <meta property="og:description" content="방콕·치앙마이·파타야 교민을 위한 중고 직거래 앱.">
     <meta property="og:type" content="website">
 
-    <!-- FontAwesome (로컬 셀프 호스팅 — CDN 불필요) -->
-    <link rel="stylesheet" href="all.min.css">
+    <!-- FontAwesome: CDN 우선, 로컬 PC 테스트 환경 폴백 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script>
+        // CDN 로드 실패 시 로컬 파일로 자동 전환
+        document.addEventListener('DOMContentLoaded', function() {
+            var testIcon = document.createElement('i');
+            testIcon.className = 'fa-solid fa-check';
+            testIcon.style.cssText = 'position:absolute;visibility:hidden;';
+            document.body.appendChild(testIcon);
+            var style = window.getComputedStyle(testIcon, ':before');
+            var loaded = style.fontFamily.includes('Font Awesome') || style.content !== 'none';
+            document.body.removeChild(testIcon);
+            if (!loaded) {
+                var link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = 'assets/fa/css/all.min.css';
+                document.head.appendChild(link);
+            }
+        });
+    </script>
     <!-- 스타일시트 -->
     <link rel="stylesheet" href="index.css">
 
@@ -47,11 +65,6 @@
             
             <!-- A. 공통 헤더 -->
             <header class="app-header" id="main-header">
-                <!-- 햄버거 메뉴 버튼 -->
-                <button class="header-icon-btn" id="category-drawer-btn" aria-label="카테고리 메뉴">
-                    <i class="fa-solid fa-bars"></i>
-                </button>
-
                 <button class="location-selector" id="loc-select-btn" type="button" aria-label="내 동네 직접 입력">
                     <span id="current-location">방콕 수쿰빗</span>
                     <i class="fa-solid fa-pen" style="font-size: 0.8rem;"></i>
@@ -67,55 +80,6 @@
                     </button>
                 </div>
             </header>
-
-            <!-- 카테고리 드로어 (왼쪽 슬라이드 인) -->
-            <div class="category-drawer-dim" id="category-drawer-dim"></div>
-            <div class="category-drawer" id="category-drawer">
-                <div class="category-drawer-header">
-                    <span class="category-drawer-title">카테고리</span>
-                    <button class="category-drawer-close" id="category-drawer-close">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                </div>
-                <div class="category-drawer-list">
-                    <div class="category-drawer-item active" data-cat="전체">
-                        <i class="fa-solid fa-border-all"></i>
-                        <span>전체</span>
-                    </div>
-                    <div class="category-drawer-item" data-cat="디지털기기">
-                        <i class="fa-solid fa-laptop"></i>
-                        <span>디지털기기</span>
-                    </div>
-                    <div class="category-drawer-item" data-cat="생활가전">
-                        <i class="fa-solid fa-tv"></i>
-                        <span>생활가전</span>
-                    </div>
-                    <div class="category-drawer-item" data-cat="가구/인테리어">
-                        <i class="fa-solid fa-couch"></i>
-                        <span>가구/인테리어</span>
-                    </div>
-                    <div class="category-drawer-item" data-cat="의류/잡화">
-                        <i class="fa-solid fa-shirt"></i>
-                        <span>의류/잡화</span>
-                    </div>
-                    <div class="category-drawer-item" data-cat="뷰티/미용">
-                        <i class="fa-solid fa-pump-soap"></i>
-                        <span>뷰티/미용</span>
-                    </div>
-                    <div class="category-drawer-item" data-cat="스포츠/레저">
-                        <i class="fa-solid fa-dumbbell"></i>
-                        <span>스포츠/레저</span>
-                    </div>
-                    <div class="category-drawer-item" data-cat="식품">
-                        <i class="fa-solid fa-bowl-rice"></i>
-                        <span>식품</span>
-                    </div>
-                    <div class="category-drawer-item" data-cat="기타">
-                        <i class="fa-solid fa-box-open"></i>
-                        <span>기타</span>
-                    </div>
-                </div>
-            </div>
 
             <!-- B. 스크롤 뷰포트 (콘텐츠 메인 영역) -->
             <main class="content-area no-scrollbar" id="main-scroll-view">
@@ -162,7 +126,7 @@
                         <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150" class="profile-avatar" id="my-avatar" alt="사용자 프로필">
                         <div style="flex: 1;">
                             <div class="profile-name" id="user-profile-name">방콕조아</div>
-                            <span class="profile-tag" id="user-profile-tag">로컬 데모 모드 작동중</span>
+                            <span class="profile-tag" id="user-profile-tag" style="display:none;"></span>
                         </div>
                         <button class="qr-cancel-btn" id="logout-btn" style="width: auto; height: 30px; font-size: 0.75rem; padding: 0 10px; border-radius: 6px;">로그아웃</button>
                     </div>
@@ -220,13 +184,7 @@
                             </div>
                             <div class="my-menu-right">활성화 4개 <i class="fa-solid fa-chevron-right"></i></div>
                         </div>
-                        <div class="my-menu-item" id="firebase-status-btn">
-                            <div class="my-menu-left">
-                                <i class="fa-solid fa-server"></i>
-                                <span>백엔드 서버 상태</span>
-                            </div>
-                            <div class="my-menu-right" id="db-status-badge" style="color:var(--t-gray-text);">연결중...</div>
-                        </div>
+
                     </div>
                 </div>
 
@@ -250,7 +208,7 @@
                 </div>
                 <div class="nav-item" data-tab="mypage">
                     <i class="fa-regular fa-user"></i>
-                    <span>나의 T-Trade</span>
+                    <span>내 정보</span>
                 </div>
             </nav>
 
@@ -383,10 +341,9 @@
                     <!-- 태국 한인 맞춤형 직거래 지도 표기 -->
                     <div class="trade-map-box">
                         <div class="trade-map-title"><i class="fa-solid fa-map-pin" style="color: var(--t-orange);"></i> 거래 희망 위치</div>
-                        <div class="map-placeholder">
-                            <i class="fa-solid fa-location-dot map-pin"></i>
-                            <div class="map-location-tag" id="detail-trade-location">수쿰빗 코리아타운 앞</div>
-                            <div style="position: absolute; width: 100%; height: 100%; opacity: 0.15; background-image: radial-gradient(#09477b 1.5px, transparent 1.5px); background-size: 16px 16px;"></div>
+                        <div class="trade-location-text">
+                            <i class="fa-solid fa-location-dot" style="color: var(--t-orange);"></i>
+                            <span id="detail-trade-location">수쿰빗 코리아타운 앞</span>
                         </div>
                     </div>
                 </div>

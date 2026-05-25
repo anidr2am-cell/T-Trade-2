@@ -139,10 +139,9 @@ html, body {
 
 .header-icons {
     display: flex;
-    gap: 14px;
+    gap: 16px;
     font-size: 1.25rem;
     color: var(--t-dark-text);
-    align-items: center;
 }
 
 .header-icon-btn {
@@ -156,158 +155,6 @@ html, body {
 }
 
 .header-icon-btn:hover { color: var(--t-orange); transform: scale(1.08); }
-
-.tt-svg-icon {
-    width: 1em;
-    height: 1em;
-    display: inline-block;
-    vertical-align: -0.125em;
-    stroke: currentColor;
-    fill: none;
-    stroke-width: 2.1;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-.fa-svg-ready::before {
-    content: none !important;
-}
-
-.category-menu-trigger {
-    width: 38px;
-    height: 38px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.hamburger-lines {
-    width: 27px;
-    height: 22px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-.hamburger-lines span {
-    display: block;
-    width: 100%;
-    height: 3px;
-    border-radius: 999px;
-    background: currentColor;
-}
-
-.category-menu-dim {
-    position: absolute;
-    inset: 0;
-    background: rgba(17, 24, 39, 0.18);
-    z-index: 110;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.22s ease;
-}
-
-.category-menu-dim.active {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.category-menu-panel {
-    position: absolute;
-    top: var(--header-h);
-    left: 16px;
-    right: 16px;
-    z-index: 120;
-    background: #fff;
-    border: 1px solid var(--t-border);
-    border-radius: 8px;
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
-    transform: translateY(-10px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.22s ease, transform 0.22s ease;
-    overflow: hidden;
-}
-
-@supports (padding-top: env(safe-area-inset-top)) {
-    .category-menu-panel {
-        top: calc(var(--header-h) + env(safe-area-inset-top));
-    }
-}
-
-.category-menu-panel.active {
-    transform: translateY(0);
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.category-menu-head {
-    height: 52px;
-    padding: 0 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--t-border);
-}
-
-.category-menu-head strong {
-    font-size: 0.96rem;
-    color: var(--t-dark-text);
-}
-
-.category-menu-close {
-    width: 34px;
-    height: 34px;
-    border: 0;
-    border-radius: 50%;
-    background: var(--t-surface);
-    color: var(--t-gray-text);
-    cursor: pointer;
-}
-
-.category-menu-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1px;
-    background: var(--t-border);
-}
-
-.category-menu-item {
-    min-height: 82px;
-    border: 0;
-    background: #fff;
-    color: var(--t-dark-text);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    cursor: pointer;
-    font-size: 0.78rem;
-    font-weight: 700;
-}
-
-.category-menu-item i {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: var(--t-surface);
-    color: var(--t-gray-text);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-}
-
-.category-menu-item.active {
-    color: var(--t-orange);
-    background: #FFF8F4;
-}
-
-.category-menu-item.active i {
-    background: var(--t-orange);
-    color: #fff;
-}
 
 .badge {
     position: absolute;
@@ -1543,4 +1390,126 @@ html, body {
 .search-no-result span {
     font-size: 0.82rem;
     color: var(--t-gray-text);
+}
+
+/* ============================================================
+   카테고리 드로어 (햄버거 메뉴)
+   ============================================================ */
+
+/* 딤 배경 */
+.category-drawer-dim {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 350;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.category-drawer-dim.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* 드로어 패널 */
+.category-drawer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 72%;
+    max-width: 280px;
+    height: 100%;
+    background: #fff;
+    z-index: 360;
+    transform: translateX(-100%);
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.12);
+    /* iOS safe area */
+    padding-top: env(safe-area-inset-top);
+}
+
+.category-drawer.active {
+    transform: translateX(0);
+}
+
+/* 드로어 헤더 */
+.category-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--t-border);
+    flex-shrink: 0;
+}
+
+.category-drawer-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--t-dark-text);
+}
+
+.category-drawer-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--t-gray-text);
+    cursor: pointer;
+    padding: 6px;
+    transition: color 0.2s;
+}
+
+.category-drawer-close:hover {
+    color: var(--t-dark-text);
+}
+
+/* 카테고리 목록 */
+.category-drawer-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 0;
+}
+
+.category-drawer-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 24px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--t-dark-text);
+    cursor: pointer;
+    transition: background 0.18s, color 0.18s;
+    border-left: 3px solid transparent;
+}
+
+.category-drawer-item i {
+    width: 20px;
+    text-align: center;
+    font-size: 1rem;
+    color: var(--t-gray-text);
+    transition: color 0.18s;
+}
+
+.category-drawer-item:hover {
+    background: var(--t-orange-light);
+    color: var(--t-orange);
+    border-left-color: var(--t-orange);
+}
+
+.category-drawer-item:hover i {
+    color: var(--t-orange);
+}
+
+.category-drawer-item.active {
+    background: var(--t-orange-light);
+    color: var(--t-orange);
+    font-weight: 700;
+    border-left-color: var(--t-orange);
+}
+
+.category-drawer-item.active i {
+    color: var(--t-orange);
 }

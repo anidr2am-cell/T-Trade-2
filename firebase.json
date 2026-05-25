@@ -3,29 +3,33 @@
     "public": ".",
     "ignore": [
       "firebase.json",
-      "firestore.rules",
-      "storage.rules",
+      ".firebaserc",
+      ".git",
+      ".gitignore",
+      "node_modules",
+      "backup",
       "deploy_guide.md",
-      "**/.*",
-      "**/node_modules/**",
-      "backup/**"
+      "icon.svg"
     ],
     "headers": [
       {
-        "source": "**/*.@(js|css)",
+        "source": "/sw.js",
         "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=3600"
-          }
+          { "key": "Cache-Control", "value": "no-cache" },
+          { "key": "Service-Worker-Allowed", "value": "/" }
         ]
+      },
+      {
+        "source": "**/*.@(png|jpg|jpeg|gif|webp|svg|ico)",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }]
+      },
+      {
+        "source": "**/*.@(css|js)",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }]
       }
+    ],
+    "rewrites": [
+      { "source": "**", "destination": "/index.html" }
     ]
-  },
-  "firestore": {
-    "rules": "firestore.rules"
-  },
-  "storage": {
-    "rules": "storage.rules"
   }
 }

@@ -176,10 +176,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // --- 4. 백엔드 상태에 따른 동기화 레이어 (Sync Database) ---
 function syncDatabase() {
-    const statusBadge = document.getElementById("db-status-badge");
+    const statusBadge = document.getElementById("db-status-badge"); // 제거된 요소, null 가능
     
     if (isFirebaseLive) {
-        statusBadge.innerHTML = `<span style="color:#10B981;"><i class="fa-solid fa-cloud"></i> 실시간 클라우드</span>`;
+        if (statusBadge) statusBadge.innerHTML = `<span style="color:#10B981;"><i class="fa-solid fa-cloud"></i> 실시간 클라우드</span>`;
         
         // 4-1. Firestore에서 실시간 매물 가져오기
         db.collection("products").orderBy("timestamp", "desc").onSnapshot(snapshot => {
@@ -200,7 +200,7 @@ function syncDatabase() {
         });
 
     } else {
-        statusBadge.innerHTML = `<span style="color:var(--t-gray-text);"><i class="fa-solid fa-triangle-exclamation"></i> 로컬 데모 모드</span>`;
+        if (statusBadge) statusBadge.innerHTML = `<span style="color:var(--t-gray-text);"><i class="fa-solid fa-triangle-exclamation"></i> 로컬 데모 모드</span>`;
         loadDemoData();
     }
 }
@@ -331,7 +331,13 @@ function updateUserUI() {
         chatListView.style.display = "block";
 
         document.getElementById("user-profile-name").textContent = state.currentUser.name;
-        document.getElementById("user-profile-tag").textContent = `${state.currentUser.region} • ${isFirebaseLive ? '서버 로그인됨' : '로컬 데모 사용중'}`;
+        const profileTag = document.getElementById("user-profile-tag");
+        if (state.currentUser.region) {
+            profileTag.textContent = state.currentUser.region;
+            profileTag.style.display = "inline-block";
+        } else {
+            profileTag.style.display = "none";
+        }
         document.getElementById("my-avatar").src = state.currentUser.avatar;
         document.getElementById("user-setting-loc").innerHTML = `${escapeHtml(state.currentUser.region)} <i class="fa-solid fa-chevron-right"></i>`;
         document.getElementById("current-location").textContent = state.currentLocation || state.currentUser.region;
@@ -547,8 +553,6 @@ function openChatWindow(chatId) {
     const chat = state.chats.find(c => c.id == chatId);
     if (!chat) return;
     history.pushState({ screen: "chat", id: chatId }, "");
-
-    // 대화 헤더 및 상품 요약 로드
     document.getElementById("chat-partner-name").textContent = chat.partner.name;
     document.getElementById("chat-prod-thumb").src = safeImageSrc(chat.product.image);
     document.getElementById("chat-prod-title").textContent = chat.product.title;
@@ -669,44 +673,6 @@ function bindCommonEvents() {
             chip.classList.add("active");
             state.currentCategory = chip.getAttribute("data-cat");
             renderFeed();
-        });
-    });
-
-    // 8-3b. 햄버거 카테고리 드로어
-    const drawerBtn   = document.getElementById("category-drawer-btn");
-    const drawer      = document.getElementById("category-drawer");
-    const drawerDim   = document.getElementById("category-drawer-dim");
-    const drawerClose = document.getElementById("category-drawer-close");
-    const drawerItems = document.querySelectorAll(".category-drawer-item");
-
-    function openCategoryDrawer() {
-        drawer.classList.add("active");
-        drawerDim.classList.add("active");
-        history.pushState({ screen: "drawer" }, "");
-    }
-
-    function closeCategoryDrawer() {
-        drawer.classList.remove("active");
-        drawerDim.classList.remove("active");
-    }
-
-    drawerBtn.addEventListener("click", openCategoryDrawer);
-    drawerClose.addEventListener("click", closeCategoryDrawer);
-    drawerDim.addEventListener("click", closeCategoryDrawer);
-
-    drawerItems.forEach(item => {
-        item.addEventListener("click", () => {
-            const cat = item.getAttribute("data-cat");
-            // 드로어 활성 항목 업데이트
-            drawerItems.forEach(i => i.classList.remove("active"));
-            item.classList.add("active");
-            // 상단 칩 바도 동기화
-            catChips.forEach(c => {
-                c.classList.toggle("active", c.getAttribute("data-cat") === cat);
-            });
-            state.currentCategory = cat;
-            renderFeed();
-            closeCategoryDrawer();
         });
     });
 
@@ -862,28 +828,25 @@ function bindCommonEvents() {
     document.getElementById("history-sheet-dim").addEventListener("click", closeTradeHistory);
 }
 
-// --- 8b. 안드로이드/브라우저 뒤로가기 버튼 (History API) ---
-window.addEventListener("popstate", () => {
+// --- 9-0. 안드로이드/브라우저 뒤로가기 버튼 History API 처리 ---
+function pushNavState(screenId) {
+    history.pushState({ screen: screenId }, "");
+}
+
+window.addEventListener("popstate", (e) => {
+    // 열려있는 화면을 순서대로 닫기: 채팅창 → 상세 → 검색 → 시트들
     const chatWindow   = document.getElementById("chat-detail-view");
     const detailWindow = document.getElementById("product-detail-view");
-    const searchOverlay = document.getElementById("search-overlay");
-    const drawerEl     = document.getElementById("category-drawer");
-    const drawerDimEl  = document.getElementById("category-drawer-dim");
+    const searchWindow = document.getElementById("search-overlay");
     const writeSheet   = document.getElementById("write-sheet");
     const authSheet    = document.getElementById("auth-sheet");
     const historySheet = document.getElementById("history-sheet");
 
-    if (drawerEl?.classList.contains("active")) {
-        drawerEl.classList.remove("active");
-        drawerDimEl?.classList.remove("active");
-        history.pushState({ screen: "home" }, "");
-        return;
-    }
     if (chatWindow?.classList.contains("active")) {
         chatWindow.classList.remove("active");
         if (state.messagesListener) state.messagesListener();
         state.selectedChatId = null;
-        history.pushState({ screen: "chats" }, "");
+        history.pushState({ screen: "chats" }, ""); // 다음 뒤로가기를 위해 재푸시
         return;
     }
     if (detailWindow?.classList.contains("active")) {
@@ -892,7 +855,7 @@ window.addEventListener("popstate", () => {
         history.pushState({ screen: "home" }, "");
         return;
     }
-    if (searchOverlay?.classList.contains("active")) {
+    if (searchWindow?.classList.contains("active")) {
         closeSearch();
         history.pushState({ screen: "home" }, "");
         return;
@@ -914,14 +877,17 @@ window.addEventListener("popstate", () => {
         history.pushState({ screen: "home" }, "");
         return;
     }
+    // 모든 오버레이가 닫혀있고 홈이면 → 아무것도 안 함 (브라우저 기본 동작 차단)
+    // 홈이 아닌 탭이면 홈으로
     if (state.activeTab && state.activeTab !== "home") {
         switchTab("home");
         history.pushState({ screen: "home" }, "");
     }
+    // 홈이면 아무것도 안 함 → 브라우저가 앱을 닫지 않도록 스택 유지
 });
 
 // 앱 최초 진입 시 기본 히스토리 스택 생성
-document.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", () => {
     history.replaceState({ screen: "home" }, "");
 });
 
@@ -1456,7 +1422,8 @@ function initCarouselSwipe() {
     currentSlideIdx = 0;
     const track = document.getElementById("detail-carousel-track");
     if (track) track.style.transform = `translateX(0)`;
-    
+
+    // 점(indicator) 클릭
     const indicators = document.querySelectorAll("#detail-carousel-indicators .indicator");
     indicators.forEach(ind => {
         ind.addEventListener("click", () => {
@@ -1464,6 +1431,40 @@ function initCarouselSwipe() {
             goToSlide(idx);
         });
     });
+
+    // 터치 스와이프
+    const container = document.getElementById("detail-carousel-track")?.parentElement;
+    if (!container) return;
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isDragging = false;
+
+    container.addEventListener("touchstart", (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        isDragging = true;
+    }, { passive: true });
+
+    container.addEventListener("touchmove", (e) => {
+        if (!isDragging) return;
+        const dx = e.touches[0].clientX - touchStartX;
+        const dy = e.touches[0].clientY - touchStartY;
+        // 수평 스와이프가 명확할 때만 스크롤 막기
+        if (Math.abs(dx) > Math.abs(dy)) e.preventDefault();
+    }, { passive: false });
+
+    container.addEventListener("touchend", (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        // 수평 이동이 40px 이상이고 수직보다 클 때만 슬라이드
+        if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+            if (dx < 0) goToSlide(currentSlideIdx + 1); // 다음
+            else        goToSlide(currentSlideIdx - 1); // 이전
+        }
+    }, { passive: true });
 }
 
 function goToSlide(idx) {
@@ -1685,6 +1686,7 @@ function openSearch() {
     history.pushState({ screen: "search" }, "");
     const overlay = document.getElementById('search-overlay');
     overlay.classList.add('active');
+    // 약간 딜레이 후 포커스 (iOS 키보드 팝업 타이밍)
     setTimeout(() => {
         document.getElementById('search-input').focus();
     }, 300);
