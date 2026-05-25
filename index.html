@@ -33,7 +33,7 @@
             if (!loaded) {
                 var link = document.createElement('link');
                 link.rel = 'stylesheet';
-                link.href = 'assets/fa/css/all.min.css';
+                link.href = 'all.min.css';
                 document.head.appendChild(link);
             }
         });
@@ -71,15 +71,70 @@
                 </button>
                 
                 <div class="header-icons">
+                    <button class="header-icon-btn category-menu-trigger" id="category-menu-btn" aria-label="카테고리 열기" aria-expanded="false">
+                        <span class="hamburger-lines" aria-hidden="true">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </span>
+                    </button>
                     <button class="header-icon-btn" id="search-trigger-btn" aria-label="검색">
                         <i class="fa-solid fa-magnifying-glass"></i>
                     </button>
                     <button class="header-icon-btn" id="noti-btn" aria-label="알림">
                         <i class="fa-regular fa-bell"></i>
-                        <span class="badge" id="noti-badge">2</span>
+                        <span class="badge" id="noti-badge" style="display: none;">0</span>
                     </button>
                 </div>
             </header>
+
+            <div class="category-menu-dim" id="category-menu-dim"></div>
+            <section class="category-menu-panel" id="category-menu-panel" aria-label="판매물품 카테고리" aria-hidden="true">
+                <div class="category-menu-head">
+                    <strong>판매물품 카테고리</strong>
+                    <button class="category-menu-close" id="category-menu-close" type="button" aria-label="카테고리 닫기">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="category-menu-grid">
+                    <button class="category-menu-item active" type="button" data-cat="전체">
+                        <i class="fa-solid fa-border-all"></i>
+                        <span>전체</span>
+                    </button>
+                    <button class="category-menu-item" type="button" data-cat="디지털기기">
+                        <i class="fa-solid fa-mobile-screen-button"></i>
+                        <span>디지털기기</span>
+                    </button>
+                    <button class="category-menu-item" type="button" data-cat="생활가전">
+                        <i class="fa-solid fa-plug-circle-bolt"></i>
+                        <span>생활가전</span>
+                    </button>
+                    <button class="category-menu-item" type="button" data-cat="가구/인테리어">
+                        <i class="fa-solid fa-couch"></i>
+                        <span>가구/인테리어</span>
+                    </button>
+                    <button class="category-menu-item" type="button" data-cat="의류/잡화">
+                        <i class="fa-solid fa-shirt"></i>
+                        <span>의류/잡화</span>
+                    </button>
+                    <button class="category-menu-item" type="button" data-cat="뷰티/미용">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>뷰티/미용</span>
+                    </button>
+                    <button class="category-menu-item" type="button" data-cat="스포츠/레저">
+                        <i class="fa-solid fa-person-biking"></i>
+                        <span>스포츠/레저</span>
+                    </button>
+                    <button class="category-menu-item" type="button" data-cat="식품">
+                        <i class="fa-solid fa-basket-shopping"></i>
+                        <span>식품</span>
+                    </button>
+                    <button class="category-menu-item" type="button" data-cat="기타">
+                        <i class="fa-solid fa-box-open"></i>
+                        <span>기타</span>
+                    </button>
+                </div>
+            </section>
 
             <!-- B. 스크롤 뷰포트 (콘텐츠 메인 영역) -->
             <main class="content-area no-scrollbar" id="main-scroll-view">
@@ -145,22 +200,22 @@
                     </div>
                     
                     <!-- 거래 성과 격자 -->
-                    <div class="profile-stats-grid">
+                    <div class="profile-stats-grid" id="my-stats-grid" style="display: none;">
                         <div class="profile-stat-box" id="my-sales-btn">
-                            <div class="profile-stat-val" id="my-sales-count">3</div>
+                            <div class="profile-stat-val" id="my-sales-count">0</div>
                             <div class="profile-stat-lbl">판매중</div>
                         </div>
                         <div class="profile-stat-box" id="my-bought-btn">
-                            <div class="profile-stat-val">5</div>
+                            <div class="profile-stat-val" id="my-completed-count">0</div>
                             <div class="profile-stat-lbl">거래완료</div>
                         </div>
                         <div class="profile-stat-box" id="my-liked-btn">
-                            <div class="profile-stat-val" id="my-like-count">12</div>
+                            <div class="profile-stat-val" id="my-like-count">0</div>
                             <div class="profile-stat-lbl">관심목록</div>
                         </div>
                     </div>
 
-                    <div class="trade-history-summary">
+                    <div class="trade-history-summary" id="my-history-summary" style="display: none;">
                         <div>
                             <span class="summary-title">나의 거래 내역</span>
                             <p>완료된 거래를 기준으로 신뢰도를 확인합니다.</p>
@@ -169,7 +224,7 @@
                     </div>
 
                     <!-- 메뉴 리스트 -->
-                    <div class="my-menu-section">
+                    <div class="my-menu-section" id="my-menu-section" style="display: none;">
                         <div class="my-menu-item" id="manual-location-btn">
                             <div class="my-menu-left">
                                 <i class="fa-solid fa-map-location-dot"></i>
@@ -210,7 +265,7 @@
                 <div class="nav-item" data-tab="chats" id="nav-chats-tab">
                     <i class="fa-regular fa-comments"></i>
                     <span>채팅</span>
-                    <span class="badge" id="chat-tab-badge">1</span>
+                    <span class="badge" id="chat-tab-badge" style="display: none;">0</span>
                 </div>
                 <div class="nav-item" data-tab="mypage">
                     <i class="fa-regular fa-user"></i>

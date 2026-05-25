@@ -9,10 +9,11 @@
  */
 
 const firebaseConfig = {
-    apiKey: "",
-    authDomain: "",
-    projectId: "",
-    storageBucket: "",
-    messagingSenderId: "",
-    appId: ""
+    apiKey: "AIzaSyB6HRZeCdSBWiZvc1KDvTaMygHxvgcMbuQ",
+    authDomain: "t-t-rade.firebaseapp.com",
+    projectId: "t-t-rade",
+    storageBucket: "t-t-rade.firebasestorage.app",
+    messagingSenderId: "262904203032",
+    appId: "1:262904203032:web:96e49089005cb5958e006d",
+    measurementId: "G-7J7Y4T2N16"
 };

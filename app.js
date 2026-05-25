@@ -172,6 +172,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupAuthListeners();
     bindCommonEvents();
     syncDatabase();
+    replaceFontIcons();
 });
 
 // --- 4. 백엔드 상태에 따른 동기화 레이어 (Sync Database) ---
@@ -295,22 +296,7 @@ function syncRealChatRooms() {
           state.chats = [];
           snapshot.forEach(doc => {
               const data = doc.data();
-              // 파트너 정보 가공
-              const partnerInfo = data.buyer.uid === state.currentUser.uid ? data.seller : data.buyer;
-              state.chats.push({
-                  id: doc.id,
-                  partner: {
-                      uid: partnerInfo.uid,
-                      name: partnerInfo.name,
-                      avatar: partnerInfo.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
-                      tradeHistory: partnerInfo.tradeHistory || []
-                  },
-                  product: data.product,
-                  lastMessage: data.lastMessage || "대화가 시작되었습니다.",
-                  lastTime: data.lastTime || "방금",
-                  unreadCount: data.unreadCount ? (data.unreadCount[state.currentUser.uid] || 0) : 0,
-                  completed: data.completed || false
-              });
+              state.chats.push(buildChatRoomFromFirestoreData(doc.id, data));
           });
           renderChatList();
       });
@@ -321,11 +307,17 @@ function updateUserUI() {
     const authPromptCard = document.getElementById("my-auth-prompt-card");
     const chatAuthBanner = document.getElementById("chat-auth-banner");
     const chatListView = document.getElementById("chat-list-view");
+    const statsGrid = document.getElementById("my-stats-grid");
+    const historySummary = document.getElementById("my-history-summary");
+    const menuSection = document.getElementById("my-menu-section");
 
     if (state.currentUser) {
         // 로그인 완료 상태 UI 활성화
         profileCard.style.display = "flex";
         authPromptCard.style.display = "none";
+        if (statsGrid) statsGrid.style.display = "grid";
+        if (historySummary) historySummary.style.display = "flex";
+        if (menuSection) menuSection.style.display = "block";
         
         if (chatAuthBanner) chatAuthBanner.style.display = "none";
         chatListView.style.display = "block";
@@ -343,15 +335,20 @@ function updateUserUI() {
         // 비로그인 상태 UI 활성화
         profileCard.style.display = "none";
         authPromptCard.style.display = "flex";
+        if (statsGrid) statsGrid.style.display = "none";
+        if (historySummary) historySummary.style.display = "none";
+        if (menuSection) menuSection.style.display = "none";
 
         if (chatAuthBanner) chatAuthBanner.style.display = "flex";
         chatListView.style.display = "none";
+        resetMyPageStats();
 
         // 글쓰기 불가 처리
         document.getElementById("write-trigger-btn").style.opacity = "0.4";
         document.getElementById("write-trigger-btn").style.pointerEvents = "none";
     }
-    updateLikeCountDisplay();
+    updateMyPageStats();
+    replaceFontIcons();
 }
 
 // --- 6. 피드 및 상품 렌더링 ---
@@ -372,6 +369,7 @@ function renderFeed() {
                 <p style="font-size: 0.95rem; font-weight: 500;">현재 구역/카테고리에 매물이 없습니다.</p>
             </div>
         `;
+        replaceFontIcons(feedContainer);
         return;
     }
 
@@ -428,6 +426,7 @@ function renderFeed() {
 
         feedContainer.appendChild(card);
     });
+    replaceFontIcons(feedContainer);
 }
 
 function openProductDetail(productId) {
@@ -482,6 +481,7 @@ function openProductDetail(productId) {
 
     detailOverlay.classList.add("active");
     initCarouselSwipe();
+    replaceFontIcons(detailOverlay);
 }
 
 // --- 7. 채팅 목록 및 1:1 대화 렌더러 ---
@@ -490,7 +490,10 @@ function renderChatList() {
     if (!chatListContainer) return;
     chatListContainer.innerHTML = "";
 
-    if (!state.currentUser) return;
+    if (!state.currentUser) {
+        updateChatBadge(0);
+        return;
+    }
 
     if (state.chats.length === 0) {
         chatListContainer.innerHTML = `
@@ -500,6 +503,8 @@ function renderChatList() {
                 <p style="font-size: 0.8rem; margin-top: 4px;">관심 매물의 상세페이지에서 '채팅하기'를 눌러 시작하세요!</p>
             </div>
         `;
+        updateChatBadge(0);
+        replaceFontIcons(chatListContainer);
         return;
     }
 
@@ -531,8 +536,14 @@ function renderChatList() {
     });
 
     // 전체 읽지 않은 메시지 뱃지 갱신
-    const totalUnread = state.chats.reduce((acc, curr) => acc + curr.unreadCount, 0);
+    const totalUnread = state.chats.reduce((acc, curr) => acc + Number(curr.unreadCount || 0), 0);
+    updateChatBadge(totalUnread);
+    replaceFontIcons(chatListContainer);
+}
+
+function updateChatBadge(totalUnread = 0) {
     const badge = document.getElementById("chat-tab-badge");
+    if (!badge) return;
     if (totalUnread > 0) {
         badge.textContent = totalUnread;
         badge.style.display = "flex";
@@ -545,6 +556,10 @@ function openChatWindow(chatId) {
     state.selectedChatId = chatId;
     const chat = state.chats.find(c => c.id == chatId);
     if (!chat) return;
+
+    chat.unreadCount = 0;
+    const input = document.getElementById("chat-text-input");
+    if (input) input.value = "";
 
     // 대화 헤더 및 상품 요약 로드
     document.getElementById("chat-partner-name").textContent = chat.partner.name;
@@ -596,7 +611,9 @@ function openChatWindow(chatId) {
     } else {
         // 2) 로컬 데모 모드 리스너
         renderChatMessages();
+        renderChatList();
     }
+    replaceFontIcons(chatDetailView);
 }
 
 function renderSystemTip(msgBox) {
@@ -607,6 +624,7 @@ function renderSystemTip(msgBox) {
         실제 거래 전 상품 상태와 만날 장소를 채팅으로 충분히 확인하세요.
     `;
     msgBox.appendChild(systemTip);
+    replaceFontIcons(systemTip);
 }
 
 function formatChatTime(timestamp) {
@@ -618,6 +636,33 @@ function formatChatTime(timestamp) {
     hours = hours % 12;
     hours = hours ? hours : 12;
     return `${ampm} ${hours}:${minutes}`;
+}
+
+function buildChatRoomFromFirestoreData(chatId, data) {
+    const partnerInfo = data.buyer.uid === state.currentUser.uid ? data.seller : data.buyer;
+    return {
+        id: chatId,
+        partner: {
+            uid: partnerInfo.uid,
+            name: partnerInfo.name,
+            avatar: partnerInfo.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
+            tradeHistory: partnerInfo.tradeHistory || []
+        },
+        product: data.product,
+        lastMessage: data.lastMessage || "대화가 시작되었습니다.",
+        lastTime: data.lastTime || "방금",
+        unreadCount: data.unreadCount ? (data.unreadCount[state.currentUser.uid] || 0) : 0,
+        completed: data.completed || false
+    };
+}
+
+function upsertChatRoom(chat) {
+    const index = state.chats.findIndex(c => c.id == chat.id);
+    if (index >= 0) {
+        state.chats[index] = { ...state.chats[index], ...chat };
+    } else {
+        state.chats.unshift(chat);
+    }
 }
 
 // 로컬 오프라인 전용 채팅 렌더러
@@ -642,6 +687,49 @@ function renderChatMessages() {
         msgBox.appendChild(row);
     });
     msgBox.scrollTop = msgBox.scrollHeight;
+    replaceFontIcons(msgBox);
+}
+
+function toggleCategoryMenu() {
+    const panel = document.getElementById("category-menu-panel");
+    if (panel?.classList.contains("active")) {
+        closeCategoryMenu();
+    } else {
+        openCategoryMenu();
+    }
+}
+
+function openCategoryMenu() {
+    document.getElementById("category-menu-panel").classList.add("active");
+    document.getElementById("category-menu-dim").classList.add("active");
+    document.getElementById("category-menu-panel").setAttribute("aria-hidden", "false");
+    document.getElementById("category-menu-btn").setAttribute("aria-expanded", "true");
+}
+
+function closeCategoryMenu() {
+    const panel = document.getElementById("category-menu-panel");
+    const dim = document.getElementById("category-menu-dim");
+    const btn = document.getElementById("category-menu-btn");
+    if (!panel || !dim || !btn) return;
+
+    panel.classList.remove("active");
+    dim.classList.remove("active");
+    panel.setAttribute("aria-hidden", "true");
+    btn.setAttribute("aria-expanded", "false");
+}
+
+function setActiveCategory(category) {
+    state.currentCategory = category || "전체";
+
+    document.querySelectorAll(".category-slider .category-chip").forEach(chip => {
+        chip.classList.toggle("active", chip.getAttribute("data-cat") === state.currentCategory);
+    });
+
+    document.querySelectorAll(".category-menu-item").forEach(item => {
+        item.classList.toggle("active", item.getAttribute("data-cat") === state.currentCategory);
+    });
+
+    renderFeed();
 }
 
 // --- 8. 핵심 이벤트 리스너 바인딩 ---
@@ -659,15 +747,32 @@ function bindCommonEvents() {
     // 8-2. 내 동네 직접 입력
     document.getElementById("loc-select-btn").addEventListener("click", promptForLocation);
 
-    // 8-3. 카테고리 퀵 바 필터
+    // 8-3. 카테고리 퀵 바/상단 메뉴 필터
     const catChips = document.querySelectorAll(".category-slider .category-chip");
     catChips.forEach(chip => {
         chip.addEventListener("click", () => {
-            catChips.forEach(c => c.classList.remove("active"));
-            chip.classList.add("active");
-            state.currentCategory = chip.getAttribute("data-cat");
-            renderFeed();
+            setActiveCategory(chip.getAttribute("data-cat"));
         });
+    });
+
+    const categoryBtn = document.getElementById("category-menu-btn");
+    const categoryDim = document.getElementById("category-menu-dim");
+    const categoryClose = document.getElementById("category-menu-close");
+
+    categoryBtn.addEventListener("click", toggleCategoryMenu);
+    categoryDim.addEventListener("click", closeCategoryMenu);
+    categoryClose.addEventListener("click", closeCategoryMenu);
+
+    document.querySelectorAll(".category-menu-item").forEach(btn => {
+        btn.addEventListener("click", () => {
+            setActiveCategory(btn.getAttribute("data-cat"));
+            closeCategoryMenu();
+            switchTab('home');
+        });
+    });
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeCategoryMenu();
     });
 
     // 8-4. 상세 및 채팅 닫기 백버튼
@@ -738,7 +843,10 @@ function bindCommonEvents() {
             reader.onload = function(evt) {
                 const base64Url = evt.target.result;
                 const idx = state.tempUploadedPhotos.length;
-                state.tempUploadedPhotos.push(base64Url);
+                state.tempUploadedPhotos.push({
+                    file,
+                    dataUrl: base64Url
+                });
 
                 // 화면에 임시 썸네일 프리뷰 칩 렌더링
                 const previewContainer = document.getElementById("uploaded-img-preview-container");
@@ -763,6 +871,7 @@ function bindCommonEvents() {
                         btn.setAttribute("data-index", newIdx);
                     });
                 });
+                replaceFontIcons(wrapper);
             };
             reader.readAsDataURL(file);
         }
@@ -863,7 +972,8 @@ function handleProductLike() {
 
     if (isFirebaseLive) {
         const prodRef = db.collection("products").doc(item.id);
-        const isLiked = item.likedBy.includes(state.currentUser.uid);
+        const currentLikedBy = Array.isArray(item.likedBy) ? item.likedBy : [];
+        const isLiked = currentLikedBy.includes(state.currentUser.uid);
         
         if (isLiked) {
             prodRef.update({
@@ -890,8 +1000,9 @@ function handleProductLike() {
             likeBtn.innerHTML = `<i class="fa-regular fa-heart"></i>`;
         }
         renderFeed();
-        updateLikeCountDisplay();
+        updateMyPageStats();
     }
+    replaceFontIcons(likeBtn);
 }
 
 // 9-2. 상세창에서 1:1 채팅하기 시작
@@ -920,7 +1031,7 @@ function handleInitiateChat() {
         chatRef.get().then(doc => {
             if (!doc.exists) {
                 // 신규 채팅방 개설 데이터 주입
-                chatRef.set({
+                const newChatData = {
                     participants: [state.currentUser.uid, item.seller.uid],
                     buyer: {
                         uid: state.currentUser.uid,
@@ -946,23 +1057,24 @@ function handleInitiateChat() {
                     },
                     completed: false,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                }).then(() => {
-                    // 최초 안내 시스템 메시지
-                    chatRef.collection("messages").add({
-                        senderId: "system",
-                        text: `이웃과 대화가 시작되었습니다. 상품 상태와 거래 장소를 충분히 확인해 주세요.`,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    
+                };
+
+                chatRef.set(newChatData).then(() => {
+                    upsertChatRoom(buildChatRoomFromFirestoreData(chatRoomId, newChatData));
                     document.getElementById("product-detail-view").classList.remove("active");
-                    openChatWindow(chatRoomId);
                     switchTab('chats');
+                    openChatWindow(chatRoomId);
+                }).catch(err => {
+                    alert("채팅방을 여는 중 오류가 발생했습니다: " + err.message);
                 });
             } else {
+                upsertChatRoom(buildChatRoomFromFirestoreData(chatRoomId, doc.data()));
                 document.getElementById("product-detail-view").classList.remove("active");
-                openChatWindow(chatRoomId);
                 switchTab('chats');
+                openChatWindow(chatRoomId);
             }
+        }).catch(err => {
+            alert("채팅방 확인 중 오류가 발생했습니다: " + err.message);
         });
     } else {
         // 로컬 데모 모드 채팅 개설
@@ -996,8 +1108,8 @@ function handleInitiateChat() {
         }
 
         document.getElementById("product-detail-view").classList.remove("active");
-        openChatWindow(existingChat.id);
         switchTab('chats');
+        openChatWindow(existingChat.id);
     }
 }
 
@@ -1009,7 +1121,7 @@ function handleSendMessage() {
 
     if (isFirebaseLive) {
         const chat = state.chats.find(c => c.id == state.selectedChatId);
-        if (!chat) return;
+        if (!chat || !state.currentUser) return;
 
         const chatRef = db.collection("chats").doc(state.selectedChatId);
         
@@ -1028,7 +1140,10 @@ function handleSendMessage() {
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
 
+        chat.lastMessage = text;
+        chat.lastTime = getCurrentTimeStr();
         input.value = "";
+        renderChatList();
     } else {
         const chat = state.chats.find(c => c.id == state.selectedChatId);
         if (!chat) return;
@@ -1044,7 +1159,7 @@ function handleSendMessage() {
 
         // 데모 챗봇 쏨차이의 답장 시나리오 구동
         setTimeout(() => {
-            let replyText = "네 고맙습니다! 시간 장소 잘 지켜서 이따 뵐게요 😊";
+            let replyText = "네 고맙습니다! 시간 장소 잘 지켜서 이따 뵐게요.";
             if (text.includes("네고") || text.includes("깎아")) {
                 replyText = "상태가 좋은 정품이라 네고는 정말 죄송합니다ㅠㅠ";
             } else if (text.includes("위치") || text.includes("어디")) {
@@ -1056,20 +1171,21 @@ function handleSendMessage() {
             chat.messages.push({ sender: 'them', text: replyText, time: getCurrentTimeStr() });
             chat.lastMessage = replyText;
             chat.lastTime = getCurrentTimeStr();
-            renderChatMessages();
+            if (state.selectedChatId == chat.id) {
+                renderChatMessages();
+            }
             renderChatList();
 
-            const badge = document.getElementById("chat-tab-badge");
             if (state.activeTab !== 'chats') {
-                badge.style.display = "flex";
-                badge.textContent = (parseInt(badge.textContent) || 0) + 1;
+                chat.unreadCount = (chat.unreadCount || 0) + 1;
+                renderChatList();
             }
         }, 1500);
     }
 }
 
 // 9-4. 새 매물 업로드 제출
-function handleSubmitProduct() {
+async function handleSubmitProduct() {
     const title = document.getElementById("write-title").value.trim();
     const category = document.getElementById("write-cat").value;
     const price = parseFloat(document.getElementById("write-price").value);
@@ -1083,36 +1199,48 @@ function handleSubmitProduct() {
 
     // 기본 이미지
     let finalPhotos = state.tempUploadedPhotos.length > 0 
-        ? state.tempUploadedPhotos 
+        ? state.tempUploadedPhotos.map(photo => photo.dataUrl || photo) 
         : ["https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=600"];
 
     if (isFirebaseLive) {
-        // 실제 운영 모드: Firestore 추가
-        db.collection("products").add({
-            title: title,
-            category: category,
-            price: price,
-            location: state.currentUser.region,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            views: 0,
-            chats: 0,
-            images: finalPhotos, // 대용량 Base64 이미지나 주소 동적 전송
-            likedBy: [],
-            seller: {
-                uid: state.currentUser.uid,
-                name: state.currentUser.name,
-                avatar: state.currentUser.avatar,
-                tradeHistory: state.currentUser.tradeHistory || []
-            },
-            description: desc,
-            tradeLocation: locText
-        }).then(() => {
+        // 실제 운영 모드: 이미지는 Storage에 저장하고 Firestore에는 URL만 저장
+        try {
+            document.getElementById("write-submit-btn").disabled = true;
+            document.getElementById("write-submit-btn").textContent = "등록중";
+
+            if (state.tempUploadedPhotos.length > 0) {
+                finalPhotos = await uploadProductImages(state.tempUploadedPhotos);
+            }
+
+            await db.collection("products").add({
+                title: title,
+                category: category,
+                price: price,
+                location: state.currentUser.region,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                views: 0,
+                chats: 0,
+                images: finalPhotos,
+                likedBy: [],
+                seller: {
+                    uid: state.currentUser.uid,
+                    name: state.currentUser.name,
+                    avatar: state.currentUser.avatar,
+                    tradeHistory: state.currentUser.tradeHistory || []
+                },
+                description: desc,
+                tradeLocation: locText
+            });
+
             document.getElementById("write-sheet").classList.remove("active");
             document.getElementById("write-sheet-dim").classList.remove("active");
             switchTab('home');
-        }).catch(err => {
+        } catch (err) {
             alert("서버 등록 실패: " + err.message);
-        });
+        } finally {
+            document.getElementById("write-submit-btn").disabled = false;
+            document.getElementById("write-submit-btn").textContent = "완료";
+        }
     } else {
         // 데모 모드: 로컬 배열 삽입
         const newGood = {
@@ -1143,6 +1271,33 @@ function handleSubmitProduct() {
         switchTab('home');
         document.getElementById("main-scroll-view").scrollTop = 0;
     }
+}
+
+async function uploadProductImages(photos) {
+    if (!storage || !state.currentUser) return photos.map(photo => photo.dataUrl || photo);
+
+    const uploadedUrls = [];
+    const now = Date.now();
+
+    for (let idx = 0; idx < photos.length; idx++) {
+        const photo = photos[idx];
+        if (!photo.file) {
+            uploadedUrls.push(photo.dataUrl || photo);
+            continue;
+        }
+
+        const safeName = photo.file.name
+            .replace(/[^a-zA-Z0-9._-]/g, "_")
+            .slice(-80);
+        const storagePath = `products/${state.currentUser.uid}/${now}_${idx}_${safeName}`;
+        const ref = storage.ref().child(storagePath);
+        const snapshot = await ref.put(photo.file, {
+            contentType: photo.file.type || "image/jpeg"
+        });
+        uploadedUrls.push(await snapshot.ref.getDownloadURL());
+    }
+
+    return uploadedUrls;
 }
 
 // 9-5. 로그인 및 회원가입 모달 내 토글 제어
@@ -1274,13 +1429,28 @@ function handleLogout() {
 
 // --- 10. 공통 도구 함수 (Utility Functions) ---
 
-function updateLikeCountDisplay() {
-    if (!state.currentUser) return;
+function resetMyPageStats() {
+    document.getElementById("my-sales-count").textContent = "0";
+    document.getElementById("my-completed-count").textContent = "0";
+    document.getElementById("my-like-count").textContent = "0";
+}
+
+function updateMyPageStats() {
+    if (!state.currentUser) {
+        resetMyPageStats();
+        return;
+    }
+
+    const salesCount = state.goods.filter(g => g.seller?.uid === state.currentUser.uid).length;
+    const completedCount = (state.currentUser.tradeHistory || []).length;
     const totalLikes = state.goods.filter(g => {
         return isFirebaseLive && Array.isArray(g.likedBy)
             ? g.likedBy.includes(state.currentUser.uid)
             : g.likedByUser;
     }).length;
+
+    document.getElementById("my-sales-count").textContent = salesCount;
+    document.getElementById("my-completed-count").textContent = completedCount;
     document.getElementById("my-like-count").textContent = totalLikes;
 }
 
@@ -1444,6 +1614,7 @@ function renderRecentSearches() {
         });
         container.appendChild(tag);
     });
+    replaceFontIcons(container);
 }
 
 // ---------- 13-2. 검색 실행 ----------
@@ -1499,6 +1670,7 @@ function renderSearchResults() {
         noRes.style.display = 'flex';
         kwSpan.textContent = `"${searchState.query}"`;
         feed.style.display = 'none';
+        replaceFontIcons(noRes);
         return;
     }
 
@@ -1551,6 +1723,7 @@ function renderSearchResults() {
         });
         feed.appendChild(card);
     });
+    replaceFontIcons(feed);
 }
 
 // ---------- 13-3. 정렬 ----------
@@ -1636,6 +1809,71 @@ function safeImageSrc(src) {
     const value = String(src).trim();
     if (/^(https?:|data:image\/)/i.test(value)) return value;
     return fallback;
+}
+
+const ICON_SVG_PATHS = {
+    "arrow-left": '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
+    "basket-shopping": '<path d="m5 11 1.5 8h11L19 11"/><path d="M7 11 12 4l5 7"/><path d="M9 15h.01"/><path d="M15 15h.01"/>',
+    "bell": '<path d="M10 21h4"/><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>',
+    "border-all": '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12h16"/><path d="M12 4v16"/>',
+    "box-open": '<path d="M3 8.5 12 13l9-4.5"/><path d="M12 13v8"/><path d="m3 8.5 3-4L12 9l6-4.5 3 4V17l-9 4-9-4Z"/>',
+    "camera": '<path d="M14.5 5 13 3H9L7.5 5H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><circle cx="12" cy="13" r="4"/>',
+    "check": '<path d="m20 6-11 11-5-5"/>',
+    "chevron-left": '<path d="m15 18-6-6 6-6"/>',
+    "chevron-right": '<path d="m9 18 6-6-6-6"/>',
+    "circle-info": '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+    "clipboard": '<rect x="8" y="4" width="8" height="4" rx="1"/><path d="M16 6h2a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"/>',
+    "cloud": '<path d="M17.5 19H7a5 5 0 1 1 1.5-9.8A7 7 0 0 1 22 12a4 4 0 0 1-4.5 7Z"/>',
+    "comment": '<path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>',
+    "comments": '<path d="M21 14a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M8 9h8"/><path d="M8 13h5"/>',
+    "couch": '<path d="M5 12V8a3 3 0 0 1 6 0v4"/><path d="M13 12V8a3 3 0 0 1 6 0v4"/><path d="M4 12h16a2 2 0 0 1 2 2v5H2v-5a2 2 0 0 1 2-2Z"/><path d="M4 19v2"/><path d="M20 19v2"/>',
+    "ellipsis-vertical": '<circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>',
+    "face-smile-wink": '<circle cx="12" cy="12" r="10"/><path d="M8 10h.01"/><path d="M15 9h2"/><path d="M8 15c1 1.4 2.3 2 4 2s3-.6 4-2"/>',
+    "heart": '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"/>',
+    "house": '<path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>',
+    "image": '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
+    "location-dot": '<path d="M12 21s7-5.2 7-12a7 7 0 1 0-14 0c0 6.8 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/>',
+    "lock": '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    "magnifying-glass": '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+    "magnifying-glass-minus": '<circle cx="11" cy="11" r="7"/><path d="M8 11h6"/><path d="m21 21-4.3-4.3"/>',
+    "map-location-dot": '<path d="M9 18 3 21V6l6-3 6 3 6-3v15l-6 3-6-3Z"/><path d="M9 3v15"/><path d="M15 6v15"/><circle cx="15" cy="10" r="2"/>',
+    "map-pin": '<path d="M12 21s7-5.2 7-12a7 7 0 1 0-14 0c0 6.8 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/>',
+    "mobile-screen-button": '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M12 18h.01"/>',
+    "paper-plane": '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
+    "pen": '<path d="M17 3a2.8 2.8 0 0 1 4 4L7 21l-5 1 1-5Z"/>',
+    "person-biking": '<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="m15 6-3 5h4l-3 6"/><path d="M9 17.5 12 11l-2-3"/><path d="M13 6h3"/>',
+    "plug-circle-bolt": '<circle cx="12" cy="12" r="10"/><path d="M10 7v4"/><path d="M14 7v4"/><path d="M9 11h6v2a3 3 0 0 1-6 0z"/><path d="m13 15-2 4"/>',
+    "plus": '<path d="M12 5v14"/><path d="M5 12h14"/>',
+    "server": '<rect x="4" y="4" width="16" height="6" rx="2"/><rect x="4" y="14" width="16" height="6" rx="2"/><path d="M8 7h.01"/><path d="M8 17h.01"/>',
+    "share-nodes": '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4"/><path d="m8.6 13.5 6.8 4"/>',
+    "shield-heart": '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="M15.5 9.5a2 2 0 0 0-2.8 0l-.7.7-.7-.7a2 2 0 0 0-2.8 2.8l3.5 3.5 3.5-3.5a2 2 0 0 0 0-2.8Z"/>',
+    "shirt": '<path d="M20 7 16 4l-2 2a3 3 0 0 1-4 0L8 4 4 7l3 4v9h10v-9Z"/>',
+    "store-slash": '<path d="M3 3 21 21"/><path d="M4 10h12"/><path d="M5 10l1-5h11l1 5"/><path d="M6 14v6h12v-2"/>',
+    "tag": '<path d="M20 10 12 2H4v8l8 8a3 3 0 0 0 4 0l4-4a3 3 0 0 0 0-4Z"/><path d="M7 7h.01"/>',
+    "triangle-exclamation": '<path d="m12 3 10 18H2Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+    "user": '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    "wand-magic-sparkles": '<path d="m5 21 14-14"/><path d="m15 3 6 6"/><path d="M6 3v4"/><path d="M4 5h4"/><path d="M18 14v4"/><path d="M16 16h4"/>',
+    "xmark": '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'
+};
+
+function getIconNameFromClass(classList) {
+    const names = Array.from(classList)
+        .filter(name => name.startsWith("fa-") && !["fa-solid", "fa-regular", "fa-brands", "fa-classic", "fa-svg-ready"].includes(name))
+        .map(name => name.replace(/^fa-/, ""));
+    return names[0] || "circle-info";
+}
+
+function replaceFontIcons(root = document) {
+    if (!root?.querySelectorAll) return;
+    root.querySelectorAll("i[class*='fa-']").forEach(icon => {
+        if (icon.dataset.svgReady === "true") return;
+
+        const iconName = getIconNameFromClass(icon.classList);
+        const paths = ICON_SVG_PATHS[iconName] || ICON_SVG_PATHS["circle-info"];
+        icon.innerHTML = `<svg class="tt-svg-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${paths}</svg>`;
+        icon.classList.add("fa-svg-ready");
+        icon.dataset.svgReady = "true";
+    });
 }
 
 // ---------- 13-6. 이벤트 바인딩 ----------
