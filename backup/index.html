@@ -2,47 +2,18 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>T-Trade | 태국 거주 한인 중고거래 1등</title>
-    <meta name="description" content="태국 방콕, 치앙마이, 파타야 한인들을 위한 중고거래 서비스 T-Trade. 바트/원화 자동 환율 계산, 1:1 채팅, PromptPay QR 송금 지원!">
-
-    <!-- PWA / 홈화면 추가 -->
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="T-Trade">
-    <meta name="theme-color" content="#FF7E36">
-
-    <!-- Open Graph -->
-    <meta property="og:title" content="T-Trade — 태국 한인 중고거래">
-    <meta property="og:description" content="방콕·치앙마이·파타야 교민 직거래 앱. PromptPay QR 즉시 송금 지원.">
-    <meta property="og:type" content="website">
-
-    <!-- FontAwesome: CDN 우선, 로컬 PC 테스트 환경 폴백 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <script>
-        // CDN 로드 실패 시 로컬 파일로 자동 전환
-        document.addEventListener('DOMContentLoaded', function() {
-            var testIcon = document.createElement('i');
-            testIcon.className = 'fa-solid fa-check';
-            testIcon.style.cssText = 'position:absolute;visibility:hidden;';
-            document.body.appendChild(testIcon);
-            var style = window.getComputedStyle(testIcon, ':before');
-            var loaded = style.fontFamily.includes('Font Awesome') || style.content !== 'none';
-            document.body.removeChild(testIcon);
-            if (!loaded) {
-                var link = document.createElement('link');
-                link.rel = 'stylesheet';
-                link.href = 'assets/fa/css/all.min.css';
-                document.head.appendChild(link);
-            }
-        });
-    </script>
-    <!-- 스타일시트 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>T-Trade | 태국 거주 한인들을 위한 1등 중고거래</title>
+    <meta name="description" content="태국 방콕, 치앙마이, 파타야 한인들을 위한 당근마켓 스타일 중고거래 서비스 T-Trade. 바트/원화 자동 환율 계산, 1:1 채팅 및 PromptPay QR 송금 지원!">
+    <!-- FontAwesome 아이콘 CDN 링크 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 커스텀 스타일시트 -->
     <link rel="stylesheet" href="index.css">
-
-    <!-- Firebase 설정 (키 입력 시 실운영 전환) -->
+    
+    <!-- 0. Firebase 설정 스크립트 선탑재 -->
     <script src="firebase-config.js"></script>
+    
+    <!-- Firebase App 및 핵심 서비스 SDK CDNs (v10 호환 모드) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -50,17 +21,12 @@
 </head>
 <body>
 
-    <!-- 앱 루트 (반응형 전체화면, 폰 프레임 제거) -->
+    <!-- 1. 데스크톱 폰 기기 프레임 시뮬레이터 -->
     <div class="device-container" id="device">
-
-        <!-- 데스크톱 좌측 힌트 배너 -->
-        <aside class="desktop-side-hint">
-            <i class="fa-solid fa-tag"></i>
-            <strong>T-Trade</strong>
-            <span>태국 한인 직거래 플랫폼</span>
-        </aside>
-
-        <!-- 실제 앱 화면 영역 -->
+        <!-- 스마트폰 노치 (Dynamic Island) -->
+        <div class="dynamic-island"></div>
+        
+        <!-- 2. 실제 애플리케이션 화면 영역 -->
         <div class="app-screen">
             
             <!-- A. 공통 헤더 -->
@@ -242,88 +208,6 @@
             </nav>
 
             <!-- ===================== [오버레이 화면 구성] ===================== -->
-
-            <!-- E-0. 검색 오버레이 (전체화면 슬라이드 다운) -->
-            <div class="slide-overlay search-overlay" id="search-overlay">
-                <!-- 검색 헤더 -->
-                <div class="search-overlay-header">
-                    <div class="search-input-wrap">
-                        <i class="fa-solid fa-magnifying-glass search-icon-inner"></i>
-                        <input
-                            type="text"
-                            id="search-input"
-                            class="search-main-input"
-                            placeholder="상품명, 지역, 카테고리 검색..."
-                            autocomplete="off"
-                            spellcheck="false"
-                        >
-                        <button class="search-clear-btn" id="search-clear-btn" aria-label="지우기" style="display:none;">
-                            <i class="fa-solid fa-xmark"></i>
-                        </button>
-                    </div>
-                    <button class="search-cancel-btn" id="search-cancel-btn">취소</button>
-                </div>
-
-                <!-- 검색 전: 최근 검색어 + 인기 키워드 -->
-                <div class="search-idle-view" id="search-idle-view">
-                    <!-- 최근 검색어 -->
-                    <div class="search-section" id="recent-searches-section">
-                        <div class="search-section-header">
-                            <span class="search-section-title">최근 검색어</span>
-                            <button class="search-section-clear" id="recent-clear-btn">전체 삭제</button>
-                        </div>
-                        <div class="recent-tags" id="recent-tags-container">
-                            <!-- JS 동적 렌더링 -->
-                        </div>
-                        <div class="search-empty-recent" id="search-empty-recent" style="display:none;">
-                            <span>최근 검색어가 없습니다.</span>
-                        </div>
-                    </div>
-
-                    <!-- 인기 검색어 -->
-                    <div class="search-section">
-                        <div class="search-section-header">
-                            <span class="search-section-title">🔥 인기 검색어</span>
-                        </div>
-                        <div class="popular-keyword-grid" id="popular-keywords">
-                            <span class="popular-kw-chip" data-kw="아이폰">아이폰</span>
-                            <span class="popular-kw-chip" data-kw="에어팟">에어팟</span>
-                            <span class="popular-kw-chip" data-kw="소파">소파</span>
-                            <span class="popular-kw-chip" data-kw="자전거">자전거</span>
-                            <span class="popular-kw-chip" data-kw="방콕">방콕</span>
-                            <span class="popular-kw-chip" data-kw="치앙마이">치앙마이</span>
-                            <span class="popular-kw-chip" data-kw="명품">명품</span>
-                            <span class="popular-kw-chip" data-kw="골프">골프</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 검색 중/후: 결과 리스트 -->
-                <div class="search-result-view" id="search-result-view" style="display:none;">
-                    <!-- 결과 헤더 -->
-                    <div class="search-result-meta" id="search-result-meta">
-                        <!-- ex) '아이폰' 검색결과 3건 -->
-                    </div>
-                    <!-- 정렬 옵션 -->
-                    <div class="search-sort-bar" id="search-sort-bar">
-                        <button class="sort-btn active" data-sort="relevant">관련순</button>
-                        <button class="sort-btn" data-sort="recent">최신순</button>
-                        <button class="sort-btn" data-sort="price_asc">낮은 가격순</button>
-                        <button class="sort-btn" data-sort="price_desc">높은 가격순</button>
-                    </div>
-                    <!-- 결과 피드 -->
-                    <div class="feed-container no-scrollbar" id="search-feed" style="padding-bottom: 120px;">
-                        <!-- JS 동적 렌더링 -->
-                    </div>
-                    <!-- 결과 없음 -->
-                    <div class="search-no-result" id="search-no-result" style="display:none;">
-                        <i class="fa-solid fa-magnifying-glass-minus"></i>
-                        <strong id="search-no-result-kw"></strong>
-                        <p>검색 결과가 없습니다.</p>
-                        <span>다른 키워드로 검색해보세요.</span>
-                    </div>
-                </div>
-            </div>
 
             <!-- E. 매물 상세 페이지 (우측 슬라이드 인) -->
             <div class="slide-overlay" id="product-detail-view">
@@ -587,18 +471,10 @@
             <!-- 송금 완료 축하 파티 컨페티 캔버스 -->
             <canvas class="confetti-canvas" id="confetti-canvas"></canvas>
 
-        </div><!-- /app-screen -->
+        </div>
+    </div>
 
-        <!-- 데스크톱 우측 힌트 배너 -->
-        <aside class="desktop-side-hint">
-            <i class="fa-brands fa-stripe" style="color: #002b54; opacity: 0.3;"></i>
-            <strong>PromptPay QR 지원</strong>
-            <span>태국 전 은행 앱으로<br>즉시 송금 가능</span>
-        </aside>
-
-    </div><!-- /device-container -->
-
-    <!-- 핵심 비즈니스 로직 JavaScript -->
+    <!-- 핵심 비즈니스 로직 및 환율 연동 JavaScript -->
     <script src="app.js"></script>
 </body>
 </html>

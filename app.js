@@ -1641,3 +1641,342 @@ function triggerConfetti() {
     }
     update();
 }
+
+// ============================================================
+// --- 13. 검색 기능 완전 구현 (Search Engine) ---
+// ============================================================
+
+// 검색 상태
+const searchState = {
+    query: '',
+    sortBy: 'relevant',   // relevant | recent | price_asc | price_desc
+    isOpen: false,
+};
+
+const RECENT_SEARCH_KEY = 'ttrade_recent_searches';
+const MAX_RECENT = 10;
+
+// ---------- 13-1. 최근 검색어 관리 ----------
+
+function getRecentSearches() {
+    try {
+        return JSON.parse(localStorage.getItem(RECENT_SEARCH_KEY) || '[]');
+    } catch { return []; }
+}
+
+function saveRecentSearch(kw) {
+    if (!kw.trim()) return;
+    let list = getRecentSearches().filter(k => k !== kw);
+    list.unshift(kw);
+    if (list.length > MAX_RECENT) list = list.slice(0, MAX_RECENT);
+    localStorage.setItem(RECENT_SEARCH_KEY, JSON.stringify(list));
+}
+
+function deleteRecentSearch(kw) {
+    const list = getRecentSearches().filter(k => k !== kw);
+    localStorage.setItem(RECENT_SEARCH_KEY, JSON.stringify(list));
+    renderRecentSearches();
+}
+
+function clearAllRecentSearches() {
+    localStorage.removeItem(RECENT_SEARCH_KEY);
+    renderRecentSearches();
+}
+
+function renderRecentSearches() {
+    const container = document.getElementById('recent-tags-container');
+    const emptyMsg  = document.getElementById('search-empty-recent');
+    const list = getRecentSearches();
+
+    container.innerHTML = '';
+
+    if (list.length === 0) {
+        emptyMsg.style.display = 'block';
+        return;
+    }
+    emptyMsg.style.display = 'none';
+
+    list.forEach(kw => {
+        const tag = document.createElement('div');
+        tag.className = 'recent-tag';
+        tag.innerHTML = `
+            <span class="recent-tag-text">${escapeHtml(kw)}</span>
+            <button class="recent-tag-del" aria-label="삭제"><i class="fa-solid fa-xmark"></i></button>
+        `;
+        tag.querySelector('.recent-tag-text').addEventListener('click', () => {
+            executeSearch(kw);
+        });
+        tag.querySelector('.recent-tag-del').addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteRecentSearch(kw);
+        });
+        container.appendChild(tag);
+    });
+}
+
+// ---------- 13-2. 검색 실행 ----------
+
+function executeSearch(kw) {
+    kw = kw.trim();
+    if (!kw) return;
+
+    searchState.query = kw;
+    document.getElementById('search-input').value = kw;
+    document.getElementById('search-clear-btn').style.display = 'flex';
+
+    saveRecentSearch(kw);
+    renderSearchResults();
+    showSearchResultView();
+}
+
+function renderSearchResults() {
+    const kw    = searchState.query.trim().toLowerCase();
+    const feed  = document.getElementById('search-feed');
+    const noRes = document.getElementById('search-no-result');
+    const meta  = document.getElementById('search-result-meta');
+    const kwSpan = document.getElementById('search-no-result-kw');
+
+    feed.innerHTML = '';
+
+    if (!kw) {
+        showSearchIdleView();
+        return;
+    }
+
+    // 필터링: 제목 | 설명 | 카테고리 | 지역 | 판매자명 모두 검색
+    let results = state.goods.filter(item => {
+        const fields = [
+            item.title,
+            item.description || '',
+            item.category,
+            item.location,
+            item.seller?.name || '',
+        ].join(' ').toLowerCase();
+        return fields.includes(kw);
+    });
+
+    // 정렬
+    results = sortSearchResults(results, kw);
+
+    // 메타 텍스트
+    meta.innerHTML = results.length > 0
+        ? `<strong>"${escapeHtml(searchState.query)}"</strong> 검색결과 ${results.length}건`
+        : '';
+
+    if (results.length === 0) {
+        noRes.style.display = 'flex';
+        kwSpan.textContent = `"${searchState.query}"`;
+        feed.style.display = 'none';
+        return;
+    }
+
+    noRes.style.display = 'none';
+    feed.style.display = '';
+
+    results.forEach(item => {
+        const krwPriceStr = Math.round(item.price * EXCHANGE_RATE).toLocaleString();
+        const thbPriceStr = item.price.toLocaleString();
+        const isLiked = isFirebaseLive && Array.isArray(item.likedBy)
+            ? item.likedBy.includes(state.currentUser?.uid)
+            : item.likedByUser;
+        const likesCount = isFirebaseLive && Array.isArray(item.likedBy)
+            ? item.likedBy.length
+            : item.likes;
+
+        const card = document.createElement('div');
+        card.className = 'item-card';
+        card.setAttribute('data-id', item.id);
+
+        card.innerHTML = `
+            <div class="item-img-container">
+                <img src="${item.images[0]}" class="item-img" alt="${escapeHtml(item.title)}" loading="lazy">
+            </div>
+            <div class="item-info">
+                <div>
+                    <h3 class="item-title">${highlightKeyword(item.title, searchState.query)}</h3>
+                    <div class="item-meta">
+                        <span>${highlightKeyword(item.location, searchState.query)}</span>
+                        <span>•</span>
+                        <span>${item.time}</span>
+                        <span>•</span>
+                        <span>${highlightKeyword(item.category, searchState.query)}</span>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                    <div class="price-container">
+                        <span class="price-thb">฿ ${thbPriceStr}</span>
+                        <span class="price-krw">≈ ${krwPriceStr}원</span>
+                    </div>
+                    <div class="card-stats">
+                        ${item.chats > 0 ? `<span class="stat-item"><i class="fa-regular fa-comment"></i> ${item.chats}</span>` : ''}
+                        <span class="stat-item ${isLiked ? 'active' : ''}">
+                            <i class="${isLiked ? 'fa-solid' : 'fa-regular'} fa-heart"></i> ${likesCount}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        `;
+        card.addEventListener('click', () => {
+            openProductDetail(item.id);
+        });
+        feed.appendChild(card);
+    });
+}
+
+// ---------- 13-3. 정렬 ----------
+
+function sortSearchResults(results, kw) {
+    switch (searchState.sortBy) {
+        case 'recent':
+            // 최신순: mockGoods 배열 역순 (실제 서비스에서는 createdAt 타임스탬프 기준)
+            return [...results].reverse();
+        case 'price_asc':
+            return [...results].sort((a, b) => a.price - b.price);
+        case 'price_desc':
+            return [...results].sort((a, b) => b.price - a.price);
+        case 'relevant':
+        default:
+            // 관련순: 제목에 키워드 포함 시 우선
+            return [...results].sort((a, b) => {
+                const aTitle = a.title.toLowerCase().includes(kw) ? 0 : 1;
+                const bTitle = b.title.toLowerCase().includes(kw) ? 0 : 1;
+                return aTitle - bTitle;
+            });
+    }
+}
+
+// ---------- 13-4. UI 상태 전환 ----------
+
+function openSearch() {
+    searchState.isOpen = true;
+    const overlay = document.getElementById('search-overlay');
+    overlay.classList.add('active');
+    // 약간 딜레이 후 포커스 (iOS 키보드 팝업 타이밍)
+    setTimeout(() => {
+        document.getElementById('search-input').focus();
+    }, 300);
+    renderRecentSearches();
+    showSearchIdleView();
+}
+
+function closeSearch() {
+    searchState.isOpen = false;
+    searchState.query = '';
+    searchState.sortBy = 'relevant';
+    const overlay = document.getElementById('search-overlay');
+    overlay.classList.remove('active');
+    document.getElementById('search-input').value = '';
+    document.getElementById('search-clear-btn').style.display = 'none';
+    // 정렬 버튼 초기화
+    document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.sort-btn[data-sort="relevant"]')?.classList.add('active');
+    showSearchIdleView();
+}
+
+function showSearchIdleView() {
+    document.getElementById('search-idle-view').style.display = 'block';
+    document.getElementById('search-result-view').style.display = 'none';
+}
+
+function showSearchResultView() {
+    document.getElementById('search-idle-view').style.display = 'none';
+    document.getElementById('search-result-view').style.display = 'flex';
+}
+
+// ---------- 13-5. 유틸 ----------
+
+function highlightKeyword(text, kw) {
+    if (!kw || !text) return escapeHtml(text);
+    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escaped})`, 'gi');
+    return escapeHtml(text).replace(regex, '<mark class="search-highlight">$1</mark>');
+}
+
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+// ---------- 13-6. 이벤트 바인딩 ----------
+
+function bindSearchEvents() {
+    const input       = document.getElementById('search-input');
+    const clearBtn    = document.getElementById('search-clear-btn');
+    const cancelBtn   = document.getElementById('search-cancel-btn');
+    const recentClear = document.getElementById('recent-clear-btn');
+    const triggerBtn  = document.getElementById('search-trigger-btn');
+
+    // 검색 버튼으로 열기
+    triggerBtn.addEventListener('click', openSearch);
+
+    // 실시간 타이핑 검색 (디바운스 150ms)
+    let debounceTimer;
+    input.addEventListener('input', () => {
+        const val = input.value;
+        clearBtn.style.display = val ? 'flex' : 'none';
+
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            if (val.trim()) {
+                searchState.query = val;
+                renderSearchResults();
+                showSearchResultView();
+            } else {
+                searchState.query = '';
+                showSearchIdleView();
+            }
+        }, 150);
+    });
+
+    // 엔터로 검색 확정 + 최근 검색어 저장
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const val = input.value.trim();
+            if (val) executeSearch(val);
+            input.blur();
+        }
+        // ESC로 닫기
+        if (e.key === 'Escape') closeSearch();
+    });
+
+    // X 버튼으로 입력 초기화
+    clearBtn.addEventListener('click', () => {
+        input.value = '';
+        clearBtn.style.display = 'none';
+        searchState.query = '';
+        showSearchIdleView();
+        input.focus();
+    });
+
+    // 취소 버튼으로 닫기
+    cancelBtn.addEventListener('click', closeSearch);
+
+    // 최근 검색어 전체 삭제
+    recentClear.addEventListener('click', clearAllRecentSearches);
+
+    // 인기 키워드 클릭
+    document.querySelectorAll('.popular-kw-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            executeSearch(chip.getAttribute('data-kw'));
+        });
+    });
+
+    // 정렬 버튼
+    document.querySelectorAll('.sort-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            searchState.sortBy = btn.getAttribute('data-sort');
+            renderSearchResults();
+        });
+    });
+}
+
+// 검색 이벤트 바인딩을 DOMContentLoaded에 추가
+document.addEventListener('DOMContentLoaded', () => {
+    bindSearchEvents();
+});
